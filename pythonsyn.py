@@ -1,4 +1,4 @@
-def merge_sort(arr,S):
+def hybridsort(arr,S):
     if len(arr) <= 1:
         return arr
     if len(arr)<=S:
@@ -6,8 +6,8 @@ def merge_sort(arr,S):
         return arr
 
     mid = len(arr) // 2
-    left_half = merge_sort(arr[:mid],S)
-    right_half = merge_sort(arr[mid:],S)
+    left_half = hybridsort(arr[:mid],S)
+    right_half = hybridsort(arr[mid:],S)
     return merge(left_half, right_half)
 
 def merge(left, right): 
@@ -36,5 +36,12 @@ def insertionSort(arr):
             j -= 1
         arr[j + 1] = key
 
+def merge_sort(arr):
+    if len(arr) <= 1:
+        return arr
 
+    mid = len(arr) // 2
+    left_half = merge_sort(arr[:mid])
+    right_half = merge_sort(arr[mid:])
+    return merge(left_half, right_half)
 
