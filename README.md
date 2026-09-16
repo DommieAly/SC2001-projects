@@ -25,7 +25,7 @@ comparisons closely followed the `n log2(n)` reference curve. Therefore, when
 Theta(n log n)
 ```
 
-![Part (c)(i)](part_i_vary_n.png)
+![Part (c)(i)](plots/part_i_vary_n.png)
 
 ## Part (c)(ii): Fixed input size, different S values
 
@@ -45,7 +45,7 @@ The step-shaped empirical curve is expected. Since Merge Sort repeatedly
 halves each subarray, several consecutive `S` values can produce the same leaf
 subarrays and therefore the same number of comparisons.
 
-![Part (c)(ii)](part_ii_vary_s.png)
+![Part (c)(ii)](plots/part_ii_vary_s.png)
 
 ## Part (c)(iii): Choosing an optimal S
 
@@ -68,7 +68,7 @@ shortest runtime. Small Insertion Sort subproblems can execute faster despite
 performing more key comparisons because they avoid recursive and merge
 overheads.
 
-![Part (c)(iii)](part_iii_optimal_s.png)
+![Part (c)(iii)](plots/part_iii_optimal_s.png)
 
 ## Part (d): Original Merge Sort vs Hybrid Merge Sort
 
@@ -87,15 +87,15 @@ CPU time, giving a speedup of approximately 1.15 times. Its advantage comes
 from lower recursion and merge overhead on small subarrays, not from reducing
 the number of key comparisons.
 
-![Part (d)](part_d_comparison.png)
+![Part (d)](plots/part_d_comparison.png)
 
 ## Run
 
 ```bash
-javac ArrayGenerator.java MergeSort.java HybridMergeSort.java Metrics.java ExperimentRunner.java
-java ExperimentRunner
-python3 plot_results.py results
+javac java/ArrayGenerator.java java/MergeSort.java java/HybridMergeSort.java java/Metrics.java java/ExperimentRunner.java
+java -cp java ExperimentRunner
+python3 python/plot_results.py results
 ```
 
-CSV data is written to `results/`. The generated figures are written to the
-current directory.
+Run these commands from the repository root. CSV data is written to `results/`.
+The generated figures are written to `plots/`.

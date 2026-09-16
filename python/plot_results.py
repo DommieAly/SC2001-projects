@@ -252,14 +252,14 @@ def main():
         "results_directory",
         nargs="?",
         type=Path,
-        default=Path("results"),
+        default=Path(__file__).resolve().parent.parent / "results",
         help="directory containing the experiment CSV files (default: results)",
     )
     parser.add_argument(
         "--output-directory",
         type=Path,
-        default=Path.cwd(),
-        help="directory for the generated PNG files (default: current directory)",
+        default=Path(__file__).resolve().parent.parent / "plots",
+        help="directory for the generated PNG files (default: repository plots/)",
     )
     arguments = parser.parse_args()
     arguments.output_directory.mkdir(parents=True, exist_ok=True)

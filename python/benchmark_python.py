@@ -10,7 +10,9 @@ from array_generator import DEFAULT_SIZES, generate_random_array
 from pythonsyn import hybridsort, merge_sort
 
 
-OUTPUT = Path(__file__).resolve().parent / "results"
+ROOT = Path(__file__).resolve().parent.parent
+OUTPUT = ROOT / "results"
+PLOTS = ROOT / "plots"
 THRESHOLD = 16
 TRIALS = 3
 
@@ -48,7 +50,8 @@ def plot(rows):
     svg += ['<text x="60" y="593" font-size="14">Values: 1–1,000,000; seeds: 20260910–20260912. Generation, copying and validation excluded.</text>',
             '<text x="60" y="618" font-size="14">Measured locally; lines connect tested sizes. Smaller inputs cluster near the origin on this linear scale.</text>',
             '</g></svg>']
-    (OUTPUT / 'python_sort_performance.svg').write_text('\n'.join(svg), encoding='utf-8')
+    PLOTS.mkdir(exist_ok=True)
+    (PLOTS / 'python_sort_performance.svg').write_text('\n'.join(svg), encoding='utf-8')
 
 
 def main():
@@ -90,7 +93,7 @@ def main():
                     del result, data
                 del original, expected
     plot(rows)
-    print('Saved results/python_sort_timings.csv and results/python_sort_performance.svg', flush=True)
+    print('Saved results/python_sort_timings.csv and plots/python_sort_performance.svg', flush=True)
 
 
 if __name__ == '__main__':
