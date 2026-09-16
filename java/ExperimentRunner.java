@@ -17,12 +17,17 @@ public class ExperimentRunner {
 
     private static final int PART_C_I_FIXED_S = 16;
     private static final int[] PART_C_I_INPUT_SIZES = {
-        1_000, 5_000, 10_000, 50_000, 100_000, 500_000
+        1_000, 5_000, 10_000, 50_000, 100_000, 500_000,
+        1_000_000, 5_000_000, 10_000_000
     };
 
     private static final int PART_C_II_FIXED_N = 100_000;
     private static final int[] PART_C_II_S_VALUES = createSValues(10, 1_000);
-    private static final int[] PART_C_III_S_VALUES = createSValues(10, 200);
+    private static final int[] PART_C_III_S_VALUES = {
+        1, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100,
+        110, 120, 130, 140, 150, 160, 170, 180, 190, 200,
+        300, 500, 1_000
+    };
 
     private static final int[] PART_C_III_INPUT_SIZES = {
         10_000, 50_000, 100_000, 500_000

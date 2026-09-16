@@ -17,7 +17,7 @@ when a subarray contains at most `S` elements.
 
 ## Part (c)(i): Fixed S, different input sizes
 
-`S` was fixed at 16 and `n` ranged from 1,000 to 500,000. The measured key
+`S` was fixed at 16 and `n` ranged from 1,000 to 10,000,000. The measured key
 comparisons closely followed the `n log2(n)` reference curve. Therefore, when
 `S` is fixed, the Hybrid Merge Sort has time complexity:
 
@@ -49,13 +49,14 @@ subarrays and therefore the same number of comparisons.
 
 ## Part (c)(iii): Choosing an optimal S
 
-The runtime experiment used `S = 1, 10, 20, ..., 200`.
+The runtime experiment used `S = 1, 10, 20, ..., 200`, followed by the wider
+checkpoints `300`, `500`, and `1000`.
 
 | Input size n | Best S by median runtime | Best S by key comparisons |
 |---:|---:|---:|
-| 10,000 | 70 | 1 |
-| 50,000 | 90 | 1 |
-| 100,000 | 80 | 1 |
+| 10,000 | 50 | 1 |
+| 50,000 | 50 | 1 |
+| 100,000 | 50 | 1 |
 | 500,000 | 40 | 1 |
 
 The exact runtime optimum changes slightly because nearby candidates have very
@@ -79,10 +80,10 @@ bias.
 
 | Algorithm | Mean key comparisons | Median CPU time |
 |---|---:|---:|
-| Original Merge Sort | 220,102,181 | 1502.46 ms |
-| Hybrid Merge Sort (`S = 60`) | 281,247,267 | 1303.35 ms |
+| Original Merge Sort | 220,102,181 | 1482.49 ms |
+| Hybrid Merge Sort (`S = 60`) | 281,247,267 | 1287.94 ms |
 
-The Hybrid Merge Sort performed 27.8% more key comparisons but used 13.3% less
+The Hybrid Merge Sort performed 27.8% more key comparisons but used 13.1% less
 CPU time, giving a speedup of approximately 1.15 times. Its advantage comes
 from lower recursion and merge overhead on small subarrays, not from reducing
 the number of key comparisons.

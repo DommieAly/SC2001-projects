@@ -156,23 +156,38 @@ def plot_part_c_iii(results_directory, output_directory):
     for row in all_rows:
         rows_by_size[int(row["n"])].append(row)
 
-    figure, (time_axis, optimal_axis) = plt.subplots(1, 2, figsize=(13, 5))
+    figure, (full_time_axis, zoom_time_axis, optimal_axis) = plt.subplots(
+        1, 3, figsize=(18, 5)
+    )
+    zoom_values = []
 
     for n, rows in sorted(rows_by_size.items()):
         rows.sort(key=lambda row: row["s"])
         minimum_time = min(row["median_time_ms"] for row in rows)
-        time_axis.plot(
-            [row["s"] for row in rows],
-            [row["median_time_ms"] / minimum_time for row in rows],
-            marker="o",
-            label=f"n = {n:,}",
+        s_values = [row["s"] for row in rows]
+        relative_times = [row["median_time_ms"] / minimum_time for row in rows]
+        for axis in (full_time_axis, zoom_time_axis):
+            axis.plot(
+                s_values,
+                relative_times,
+                marker="o",
+                markersize=4,
+                label=f"n = {n:,}",
+            )
+        zoom_values.extend(
+            time for s, time in zip(s_values, relative_times) if s <= 200
         )
 
-    time_axis.axhline(1.0, color="black", linewidth=0.8, linestyle="--")
-    time_axis.set_xlabel("Threshold S")
-    time_axis.set_ylabel("Median time / minimum median time")
-    time_axis.set_title("Relative runtime across candidate S values")
-    time_axis.legend()
+    for axis in (full_time_axis, zoom_time_axis):
+        axis.axhline(1.0, color="black", linewidth=0.8, linestyle="--")
+        axis.set_xlabel("Threshold S")
+        axis.set_ylabel("Median time / minimum median time")
+
+    full_time_axis.set_title("Full candidate range")
+    full_time_axis.legend()
+    zoom_time_axis.set_xlim(0, 200)
+    zoom_time_axis.set_ylim(0.98, max(zoom_values) * 1.03)
+    zoom_time_axis.set_title("Detail for S ≤ 200")
 
     sizes = [row["n"] for row in optimal_rows]
     optimal_axis.plot(
@@ -195,7 +210,7 @@ def plot_part_c_iii(results_directory, output_directory):
     optimal_axis.legend()
 
     figure.suptitle("Part (c)(iii): Determining an optimal S")
-    figure.tight_layout(rect=(0, 0, 1, 0.94), w_pad=5.0)
+    figure.tight_layout(rect=(0, 0, 1, 0.94), w_pad=4.0)
     figure.savefig(output_directory / "part_iii_optimal_s.png", dpi=200)
     plt.close(figure)
 
