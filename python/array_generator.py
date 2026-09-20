@@ -10,11 +10,6 @@ DEFAULT_SIZES = (1_000, 5_000, 10_000, 50_000, 100_000,
 
 
 def generate_random_array(n, x, seed=None):
-    """Return n random integers in [1, x], with an optional repeatable seed.
-
-    Mirrors ArrayGenerator.java's interface. Python and Java use different
-    random generators, so identical seeds do not produce identical arrays.
-    """
     if n < 0:
         raise ValueError("Array size cannot be negative.")
     if x <= 0:
