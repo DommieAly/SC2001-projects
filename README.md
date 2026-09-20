@@ -49,25 +49,35 @@ subarrays and therefore the same number of comparisons.
 
 ## Part (c)(iii): Choosing an optimal S
 
-The runtime experiment used `S = 1, 10, 20, ..., 200`, followed by the wider
-checkpoints `300`, `500`, and `1000`.
+A threshold only matters through the halving interval it falls in: every `S`
+with `ceil(n/2^k) <= S <= floor(n/2^(k-1)) - 1` drives the recursion to the same
+depth, so it builds an identical tree and performs an identical number of key
+comparisons. Sweeping `S` one integer at a time therefore re-measures the same
+computation over and over. The search instead tests one representative per
+interval, which covers every distinct behaviour in 12 candidates per input size.
 
-| Input size n | Best S by median runtime | Best S by key comparisons |
-|---:|---:|---:|
-| 10,000 | 50 | 1 |
-| 50,000 | 50 | 1 |
-| 100,000 | 50 | 1 |
-| 500,000 | 40 | 1 |
+Each run also measures one candidate a second time under a separate label. That
+control does the same work as its twin, so the gap between them is this
+machine's noise floor. Candidates are only called different when they are
+further apart than two standard errors.
 
-The exact runtime optimum changes slightly because nearby candidates have very
-similar times and runtime measurements contain system noise. The consistently
-fast region was approximately `S = 40` to `S = 90`. Thus, `S = 60` was selected
-as a stable general-purpose threshold.
+| Input size n | Fastest leaf size | Interval of S | Median time | Best S by key comparisons |
+|---:|---:|---|---:|---:|
+| 10,000 | 40 | `40`..`77` | 0.679 ms | 1 |
+| 50,000 | 49 | `49`..`96` | 4.229 ms | 1 |
+| 100,000 | 49 | `49`..`96` | 9.064 ms | 1 |
+| 500,000 | 31 | `31`..`60` | 52.748 ms | 1 |
 
-The comparison-count optimum remained `S = 1`, but this does not give the
-shortest runtime. Small Insertion Sort subproblems can execute faster despite
-performing more key comparisons because they avoid recursive and merge
-overheads.
+The quantity that stays put as `n` grows is the leaf size, not `S`. The
+achievable leaf sizes are `n / 2^k`, a different ladder for each `n`, and the
+runtime minimum lands on the rung nearest 30 to 60 every time. `S = 50` falls
+inside the winning interval for all four input sizes.
+
+The comparison-count optimum is `S = 1` for every input size, that is, plain
+merge sort. On key comparisons alone the hybrid can never win: merging is never
+more expensive than insertion sort at any subarray size, and ties only at sizes
+2 and 3. The hybrid's advantage is entirely in running time, where it avoids a
+temporary array allocation and a stack frame per merge.
 
 ![Part (c)(iii)](plots/part_iii_optimal_s.png)
 
@@ -93,10 +103,14 @@ the number of key comparisons.
 ## Run
 
 ```bash
-javac java/ArrayGenerator.java java/MergeSort.java java/HybridMergeSort.java java/Metrics.java java/ExperimentRunner.java
-java -cp java ExperimentRunner
+javac -d out java/*.java
+java -cp out ExperimentRunner results
 python3 python/plot_results.py results
 ```
 
-Run these commands from the repository root. CSV data is written to `results/`.
+Run these commands from the repository root. `ExperimentRunner` takes an
+optional second argument naming the parts to run, for example
+`java -cp out ExperimentRunner results ciii`, so a single part can be repeated
+without overwriting results the report already quotes. CSV data is written to
+`results/`.
 The generated figures are written to `plots/`.

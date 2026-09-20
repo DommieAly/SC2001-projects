@@ -4,6 +4,7 @@
 import argparse
 import csv
 import math
+from functools import lru_cache
 from collections import defaultdict
 from pathlib import Path
 
@@ -35,21 +36,26 @@ def fitted_scale(observed, theoretical):
     return numerator / denominator
 
 
-def fit_two_term_model(observed, first_term, second_term):
-    """Fit y = a*x1 + b*x2 using ordinary least squares."""
-    x1_x1 = sum(value * value for value in first_term)
-    x2_x2 = sum(value * value for value in second_term)
-    x1_x2 = sum(x1 * x2 for x1, x2 in zip(first_term, second_term))
-    x1_y = sum(x1 * y for x1, y in zip(first_term, observed))
-    x2_y = sum(x2 * y for x2, y in zip(second_term, observed))
-    determinant = x1_x1 * x2_x2 - x1_x2 * x1_x2
+@lru_cache(maxsize=None)
+def predicted_comparisons(size, threshold):
+    """Expected key comparisons, evaluated on the real recursion tree.
 
-    if math.isclose(determinant, 0.0):
-        raise ValueError("The theoretical terms are linearly dependent.")
-
-    first_coefficient = (x1_y * x2_x2 - x2_y * x1_x2) / determinant
-    second_coefficient = (x2_y * x1_x1 - x1_y * x1_x2) / determinant
-    return first_coefficient, second_coefficient
+    Merging m elements costs at most m key comparisons, and insertion sort on a
+    random array of length L averages L^2 / 4. Walking the actual tree, instead
+    of assuming n/S uniform leaves of size S, is what makes this a step
+    function: it is flat wherever a range of S drives the recursion to the same
+    depth, which is exactly what the measurements do.
+    """
+    if size <= 1:
+        return 0.0
+    if size <= threshold:
+        return size * size / 4
+    left = (size + 1) // 2
+    return (
+        predicted_comparisons(left, threshold)
+        + predicted_comparisons(size - left, threshold)
+        + size
+    )
 
 
 def plot_part_c_i(results_directory, output_directory):
@@ -90,59 +96,47 @@ def plot_part_c_i(results_directory, output_directory):
 
 def plot_part_c_ii(results_directory, output_directory):
     rows = read_csv(results_directory / "part_ii_vary_s.csv")
-    s_values = [row["s"] for row in rows]
+    input_size = int(rows[0]["n"])
+    s_values = [int(row["s"]) for row in rows]
     comparisons = [row["mean_key_comparisons"] for row in rows]
-    deviations = [row["stddev_key_comparisons"] for row in rows]
-    merge_terms = [row["merge_growth_proxy"] for row in rows]
-    insertion_terms = [row["insertion_growth_proxy"] for row in rows]
-    merge_weight, insertion_weight = fit_two_term_model(
-        comparisons, merge_terms, insertion_terms
-    )
-    fitted_theory = [
-        merge_weight * merge + insertion_weight * insertion
-        for merge, insertion in zip(merge_terms, insertion_terms)
-    ]
+
+    # Drawn on every integer S, not only the sampled ones, so that the
+    # predicted step edges land where the model actually puts them.
+    dense_s = list(range(1, max(s_values) + 1))
+    dense_theory = [predicted_comparisons(input_size, s) for s in dense_s]
 
     figure, (full_axis, zoom_axis) = plt.subplots(1, 2, figsize=(13, 5))
     for axis in (full_axis, zoom_axis):
-        axis.errorbar(
-            s_values,
-            comparisons,
-            yerr=deviations,
-            marker="o",
-            markersize=3,
-            capsize=2,
-            label="Empirical mean comparisons",
+        axis.plot(
+            dense_s,
+            dense_theory,
+            linewidth=2,
+            label="Theory on the real recursion tree, no fitted parameters",
         )
         axis.plot(
             s_values,
-            fitted_theory,
-            linestyle="--",
-            label=r"Fitted $a\,n\log_2(n/S) + b\,nS$ trend",
+            comparisons,
+            marker="o",
+            markersize=4,
+            label="Empirical mean comparisons",
         )
         axis.set_xlabel("Threshold S")
         axis.set_ylabel("Number of key comparisons")
+        axis.grid(alpha=0.25)
 
     full_axis.set_title("Full range")
-    full_axis.legend()
-    zoom_axis.set_xlim(0, 200)
-    zoom_indices = [index for index, s in enumerate(s_values) if s <= 200]
-    zoom_minimum = min(
-        min(comparisons[index] - deviations[index], fitted_theory[index])
-        for index in zoom_indices
-    )
-    zoom_maximum = max(
-        max(comparisons[index] + deviations[index], fitted_theory[index])
-        for index in zoom_indices
-    )
-    zoom_padding = (zoom_maximum - zoom_minimum) * 0.08
-    zoom_axis.set_ylim(
-        zoom_minimum - zoom_padding,
-        zoom_maximum + zoom_padding,
-    )
-    zoom_axis.set_title("Detail for S ≤ 200")
+    full_axis.legend(loc="lower right")
+
+    zoom_limit = 200
+    zoom_axis.set_xlim(0, zoom_limit)
+    visible = [c for s, c in zip(s_values, comparisons) if s <= zoom_limit]
+    visible += [t for s, t in zip(dense_s, dense_theory) if s <= zoom_limit]
+    padding = (max(visible) - min(visible)) * 0.08
+    zoom_axis.set_ylim(min(visible) - padding, max(visible) + padding)
+    zoom_axis.set_title(f"Detail for S \u2264 {zoom_limit}")
+
     figure.suptitle(
-        f"Part (c)(ii): Comparisons vs S, fixed n = {int(rows[0]['n']):,}"
+        f"Part (c)(ii): Comparisons vs S, fixed n = {input_size:,}"
     )
     figure.tight_layout()
     figure.savefig(output_directory / "part_ii_vary_s.png", dpi=200)
@@ -150,66 +144,84 @@ def plot_part_c_ii(results_directory, output_directory):
 
 
 def plot_part_c_iii(results_directory, output_directory):
-    all_rows = read_csv(results_directory / "part_iii_all_candidates.csv")
-    optimal_rows = read_csv(results_directory / "part_iii_optimal_s.csv")
+    rows = [
+        row
+        for row in read_csv(results_directory / "part_iii_candidates.csv")
+        if row["role"] == "candidate"
+    ]
     rows_by_size = defaultdict(list)
-    for row in all_rows:
+    for row in rows:
         rows_by_size[int(row["n"])].append(row)
+    for candidate_rows in rows_by_size.values():
+        candidate_rows.sort(key=lambda row: row["leaf_size"])
 
-    figure, (full_time_axis, zoom_time_axis, optimal_axis) = plt.subplots(
-        1, 3, figsize=(18, 5)
-    )
-    zoom_values = []
+    figure, (time_axis, criteria_axis) = plt.subplots(1, 2, figsize=(13, 5))
 
-    for n, rows in sorted(rows_by_size.items()):
-        rows.sort(key=lambda row: row["s"])
-        minimum_time = min(row["median_time_ms"] for row in rows)
-        s_values = [row["s"] for row in rows]
-        relative_times = [row["median_time_ms"] / minimum_time for row in rows]
-        for axis in (full_time_axis, zoom_time_axis):
-            axis.plot(
-                s_values,
-                relative_times,
-                marker="o",
-                markersize=4,
-                label=f"n = {n:,}",
-            )
-        zoom_values.extend(
-            time for s, time in zip(s_values, relative_times) if s <= 200
+    for n, candidate_rows in sorted(rows_by_size.items()):
+        leaf_sizes = [row["leaf_size"] for row in candidate_rows]
+        times = [row["median_time_ms"] for row in candidate_rows]
+        fastest = min(times)
+        time_axis.plot(
+            leaf_sizes,
+            [time / fastest for time in times],
+            marker="o",
+            markersize=4,
+            label=f"n = {n:,}",
         )
 
-    for axis in (full_time_axis, zoom_time_axis):
-        axis.axhline(1.0, color="black", linewidth=0.8, linestyle="--")
-        axis.set_xlabel("Threshold S")
-        axis.set_ylabel("Median time / minimum median time")
+    time_axis.axhline(1.0, color="0.6", linestyle=":", linewidth=1)
+    time_axis.set_xscale("log", base=2)
+    time_axis.set_xlabel("Leaf size (log scale)")
+    time_axis.set_ylabel("Median time / fastest candidate for that n")
+    time_axis.set_title("The fastest leaf size barely moves with n")
+    time_axis.grid(alpha=0.25)
+    time_axis.legend()
 
-    full_time_axis.set_title("Full candidate range")
-    full_time_axis.legend()
-    zoom_time_axis.set_xlim(0, 200)
-    zoom_time_axis.set_ylim(0.98, max(zoom_values) * 1.03)
-    zoom_time_axis.set_title("Detail for S ≤ 200")
+    reference_n = 100_000 if 100_000 in rows_by_size else max(rows_by_size)
+    reference_rows = rows_by_size[reference_n]
+    leaf_sizes = [row["leaf_size"] for row in reference_rows]
+    comparisons = [row["mean_key_comparisons"] for row in reference_rows]
+    times = [row["median_time_ms"] for row in reference_rows]
 
-    sizes = [row["n"] for row in optimal_rows]
-    optimal_axis.plot(
-        sizes,
-        [row["best_s_by_time"] for row in optimal_rows],
-        marker="o",
-        label="Best S by median runtime",
-    )
-    optimal_axis.plot(
-        sizes,
-        [row["best_s_by_key_comparisons"] for row in optimal_rows],
+    criteria_axis.plot(
+        leaf_sizes,
+        [value / min(comparisons) for value in comparisons],
         marker="s",
-        linestyle="--",
-        label="Best S by comparisons",
+        markersize=4,
+        label="Key comparisons",
     )
-    optimal_axis.set_xscale("log")
-    optimal_axis.set_xlabel("Input size n (log scale)")
-    optimal_axis.set_ylabel("Best threshold S")
-    optimal_axis.set_title("Selected S for each input size")
-    optimal_axis.legend()
+    criteria_axis.plot(
+        leaf_sizes,
+        [value / min(times) for value in times],
+        marker="o",
+        markersize=4,
+        label="Running time",
+    )
+    criteria_axis.axvline(
+        leaf_sizes[comparisons.index(min(comparisons))],
+        color="C0",
+        linestyle=":",
+        linewidth=1.2,
+    )
+    criteria_axis.axvline(
+        leaf_sizes[times.index(min(times))],
+        color="C1",
+        linestyle=":",
+        linewidth=1.2,
+    )
+    criteria_axis.set_xscale("log", base=2)
+    criteria_axis.set_yscale("log")
+    criteria_axis.set_xlabel("Leaf size (log scale)")
+    criteria_axis.set_ylabel("Relative to that criterion's own minimum")
+    criteria_axis.set_title(
+        f"Comparisons and time disagree (n = {reference_n:,})"
+    )
+    criteria_axis.grid(alpha=0.25)
+    criteria_axis.legend()
 
-    figure.suptitle("Part (c)(iii): Determining an optimal S")
+    figure.suptitle(
+        "Part (c)(iii): one candidate per halving interval of S"
+    )
     figure.tight_layout(rect=(0, 0, 1, 0.94), w_pad=4.0)
     figure.savefig(output_directory / "part_iii_optimal_s.png", dpi=200)
     plt.close(figure)

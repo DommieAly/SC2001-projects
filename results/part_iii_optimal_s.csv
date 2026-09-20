@@ -1,5 +1,5 @@
-n,best_s_by_time,median_time_ms,mean_time_ms,best_s_by_key_comparisons,mean_key_comparisons
-10000,50,0.7013,0.7081,1,120434.30
-50000,50,4.2505,4.3310,1,718241.30
-100000,50,9.1792,9.2868,1,1536275.40
-500000,40,53.9061,53.9390,1,8837251.50
+n,candidates,best_s,best_interval_low,best_interval_high,best_leaf_size,best_median_time_ms,tie_band_percent,control_gap_percent,candidates_tied,best_s_by_key_comparisons
+10000,12,58,40,77,40,0.6769,1.20,0.34,1,1
+50000,12,72,49,96,49,4.2728,1.43,0.49,2,1
+100000,12,72,49,96,49,9.0955,0.75,0.00,1,1
+500000,12,45,31,60,31,52.9595,0.59,0.01,2,1
