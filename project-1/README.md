@@ -108,7 +108,7 @@ java -cp out ExperimentRunner results
 python3 python/plot_results.py results
 ```
 
-Run these commands from the repository root. `ExperimentRunner` takes an
+Run these commands from the `project-1` folder. `ExperimentRunner` takes an
 optional second argument naming the parts to run, for example
 `java -cp out ExperimentRunner results ciii`, so a single part can be repeated
 without overwriting results the report already quotes. CSV data is written to

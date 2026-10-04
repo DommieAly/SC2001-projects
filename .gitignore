@@ -1,3 +1,13 @@
+# Build output
+out/
+*.class
+
+# Python
 __pycache__/
 *.py[cod]
-*.class
+
+# macOS
+.DS_Store
+
+# Course handouts stay local (this repository is public)
+Project [0-9]*.pdf
