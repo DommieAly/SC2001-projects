@@ -1,0 +1,9 @@
+weights,v,crossings,density_below,b_over_a_below,density_above,b_over_a_above,crossover_density
+random,1000,1,0.9800,0.9867,1.0000,1.0052,0.9944
+random,2000,0,,,,,
+random,4000,0,,,,,
+random,8000,0,,,,,
+worst_case,1000,1,0.0500,0.6642,0.1000,1.0505,0.0913
+worst_case,2000,1,0.0500,0.6847,0.1000,1.1105,0.0835
+worst_case,4000,1,0.0500,0.7220,0.1000,1.1965,0.0751
+worst_case,8000,1,0.0500,0.7838,0.1000,1.3064,0.0666
