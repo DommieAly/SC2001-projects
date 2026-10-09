@@ -38,9 +38,9 @@ because that vertex's distance is already the smallest.
 
 - **Terms.** *Density* is `E / V(V − 1)`, the fraction of all possible edges
   that are present. A *forward edge* is an edge to a vertex that comes later
-  on the graph's Hamiltonian cycle (see below), counted from the source; the
-  `V − 1` cycle edges themselves are forward edges, except the one that
-  closes the cycle.
+  on the graph's Hamiltonian cycle (see below), counted from the source;
+  every cycle edge except the one that closes the cycle back to the source is
+  a forward edge, so `V − 1` of the `V` cycle edges are.
 - **Graphs.** Directed, with exactly `E` edges. Every vertex has out-degree
   `⌊E/V⌋` or `⌈E/V⌉`, with targets drawn uniformly at random and without
   repeats. Every graph contains a random cycle through all vertices (a
@@ -184,7 +184,8 @@ The sweep of (ii) with uniform, random and worst-case weights.
 - **The decrease-keys follow the theory.** Uniform weights give exactly
   4,999 = `V − 1` in every row. Random weights give 4,999 to 34,043, at most
   `V · H(E/V)` (0.64-0.82 of it for `E > V`). Worst-case weights give one
-  per forward edge, `(E + V)/2 − 1` to within 0.1%: 7,502 at `E = 2V`,
+  per forward edge, `(V − 1)(E + V)/(2V) ≈ (E + V)/2 − 1` on average,
+  matched to within 0.1%: 7,502 at `E = 2V`,
   1.5 times `E/2`, and about `E/2` once `E ≫ V`.
 - **Best and average case take nearly the same time.** Relative to the
   random-weight time at the same `E`, uniform weights take between 6.8% less
@@ -247,8 +248,9 @@ at most `E` decrease-keys climbs at most `log V` levels.
 `V` from 500 to 100,000; `E` fixed at 100,000, as in (a)(i); random weights.
 `V` cannot exceed `E`, because the Hamiltonian cycle needs `E ≥ V`; at
 `V = 100,000` every vertex has out-degree 1 and the graph is the cycle alone.
-The matrix of (a) would need `4V²` bytes, 40 GB at `V = 100,000`, which is
-why (a)(i) stops at 8,000 (256 MB). Up to 8,000 the two parts use graphs from
+The matrix of (a) needs `4V²` bytes, 40 GB at `V = 100,000`, so (a) cannot
+follow (b) up to `V = E`; (a)(i) stops at 8,000 (256 MB, also the largest `V`
+of part (c)) to keep the run short. Up to 8,000 the two parts use graphs from
 the same seeds (the first 10 trials are the same graphs; (b) runs up to 100
 trials on these small graphs), measured in separate runs.
 
@@ -435,7 +437,7 @@ faster for the larger `V`.
   by a margin that shrinks as the graph fills up.** (b) reads the `E` list
   entries, (a) all `V²` matrix cells. At density 0.5, (b) takes 0.49-0.58 of
   the time of (a); on the complete graph the two are level (0.925-1.005). The
-  same holds on the `V = 5,000` sweeps of parts (a) and (b): (a) takes 1.88
+  same holds on the `V = 5,000` sweeps of parts (a) and (b): (a) takes 1.87
   times as long as (b) at density 0.5 and 1.02 times on the complete graph.
   The `log V` factor of (b) never shows, because at density 0.5 and above at
   most 1.1% of relaxations call `decreaseKey` (1.1% at `V = 1,000`, 0.17% at

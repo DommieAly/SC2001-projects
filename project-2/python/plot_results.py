@@ -110,8 +110,19 @@ def relative_linear_fit(x_values, y_values):
     return (t0 - slope * s1) / s0, slope
 
 
-def harmonic(k):
-    return sum(1.0 / i for i in range(1, int(round(k)) + 1))
+def harmonic(x):
+    """H(x) = digamma(x + 1) + Euler's gamma, which equals 1 + 1/2 + ... + 1/x for whole x.
+
+    E/V is not always a whole number in the fixed-E sweeps, so the sum alone would round it.
+    """
+    shift = 0.0
+    z = x + 1.0
+    while z < 8.0:
+        shift -= 1.0 / z
+        z += 1.0
+    digamma = (math.log(z) - 1.0 / (2.0 * z) - 1.0 / (12.0 * z ** 2)
+               + 1.0 / (120.0 * z ** 4) - 1.0 / (252.0 * z ** 6))
+    return digamma + shift + 0.5772156649015329
 
 
 def heap_term(row):
@@ -169,21 +180,22 @@ def plot_case_times(axis, rows, algorithm):
 def plot_case_decrease_keys(axis, rows, algorithm, vertex_count):
     """Decrease-keys against E for each weighting, with the three theoretical counts."""
     e = column(rows_where(rows, weights="random"), "e")
-    axis.plot(
-        e, [forward_edges(x, vertex_count) for x in e], linestyle="--", color=REFERENCE_COLOUR,
-        linewidth=1.5, label="(E+V)/2 − 1: one per forward edge")
-    axis.plot(
-        e, [vertex_count * harmonic(x / vertex_count) for x in e], linestyle="-.",
-        color=REFERENCE_COLOUR, linewidth=1.5, label="V·H(E/V): bound on the random-weight mean")
-    axis.plot(
-        e, [vertex_count - 1 for _ in e], linestyle=":", color=REFERENCE_COLOUR,
-        linewidth=1.5, label="V − 1: the fewest possible")
     for weights in CASE_ORDER:
         weight_rows = rows_where(rows, weights=weights)
         axis.plot(
             column(weight_rows, "e"), column(weight_rows, "mean_decrease_keys"),
             marker=CASE_MARKERS[weights], color=CASE_SHADES[algorithm][weights],
             linewidth=2, label=CASE_NAMES[weights])
+    # The references go on top: two of them coincide with the data they predict.
+    axis.plot(
+        e, [forward_edges(x, vertex_count) for x in e], linestyle="--", color="black",
+        linewidth=1, zorder=5, label="(V−1)(E+V)/2V ≈ (E+V)/2 − 1: one per forward edge")
+    axis.plot(
+        e, [vertex_count * harmonic(x / vertex_count) for x in e], linestyle="-.",
+        color="black", linewidth=1, zorder=5, label="V·H(E/V): bound on the random-weight mean")
+    axis.plot(
+        e, [vertex_count - 1 for _ in e], linestyle=":", color="black",
+        linewidth=1.2, zorder=5, label="V − 1: the fewest possible")
     axis.set_xscale("log")
     axis.set_yscale("log")
     axis.set_ylabel("Decrease-keys per run (log scale)")
@@ -403,7 +415,12 @@ def plot_part_b_vary_v(results_directory, output_directory):
     time_axis.set_title(f"Same E = {edge_count:,}: (a) grows as V², (b) far more slowly")
     time_axis.legend(fontsize=8, loc="upper left")
     count_axis.set_ylabel("Operations per run (log scale), part (b)")
-    count_axis.set_title("(b): heap work grows like V log V; relaxations stay at E")
+    per_v_log_v = [
+        comparisons / (n * math.log2(n))
+        for comparisons, n in zip(heap_comparisons, v) if n < edge_count]
+    count_axis.set_title(
+        f"(b): heap comparisons {min(per_v_log_v):.1f}–{max(per_v_log_v):.1f} × V·log₂V "
+        "for V < E; relaxations stay at E")
     count_axis.legend(fontsize=8, loc="upper left")
 
     figure.suptitle(

@@ -91,8 +91,10 @@ public final class GraphGenerator {
      * weights that make vertex 0 a worst-case source for the heap.
      *
      * <p>Let x0 = 0, x1, x2, ... be the vertices in cycle order. Cycle edges
-     * get weight 1, so d(x_i) = i and Dijkstra's algorithm extracts the
-     * vertices in exactly this order. An edge from x_i forward to a later
+     * get weight 1, and every other forward edge from x_i to x_k weighs more
+     * than k - i (gap[i] is at least 2(V - 1 - i)), so no edge shortcuts the
+     * cycle: d(x_i) = i and Dijkstra's algorithm extracts the vertices in
+     * exactly this order. An edge from x_i forward to a later
      * x_k (other than the cycle edge) gets weight {@code gap[i] + r}, where r
      * counts down along x_i's adjacency list, from x_i's number of such edges
      * to 1. Two facts follow:
@@ -100,7 +102,8 @@ public final class GraphGenerator {
      *   <li>The edges from x_i are relaxed in list order, and their keys
      *       d(x_i) + gap[i] + r fall with every edge, so each new key is
      *       smaller than the one set before it.</li>
-     *   <li>{@code gap[i - 1] = gap[i] + (forward edges of x_i) + 2}, so every
+     *   <li>{@code gap[i - 1] = gap[i] + F_i + 2}, where F_i counts x_i's
+     *       forward edges other than its cycle edge, so every
      *       key set while processing x_i is smaller than every key set
      *       earlier.</li>
      * </ol>
