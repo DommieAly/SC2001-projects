@@ -46,32 +46,30 @@ public class ExperimentRunner {
     };
 
     /**
-     * Part (a) varies |V| with this many edges, so that only |V| changes. It
-     * must lie between V, for the Hamiltonian cycle, and V(V-1) for every V
-     * of PART_A_VERTEX_COUNTS: at V = 500 a complete graph has 249,500 edges.
+     * Parts (a) and (b) vary |V| with this many edges, so that only |V|
+     * changes. It must lie between V, for the Hamiltonian cycle, and V(V-1)
+     * for every V varied: at V = 500 a complete graph has 249,500 edges.
      */
-    private static final long PART_A_FIXED_EDGE_COUNT = 100_000;
-
-    /**
-     * Part (b) varies |V| with this many edges per vertex. No single |E| lies
-     * between V and V(V-1) for every V from 10^3 to 10^6, so part (b) fixes
-     * E/V instead.
-     */
-    private static final int SPARSE_OUT_DEGREE = 10;
+    private static final long FIXED_EDGE_COUNT = 100_000;
 
     /**
      * The matrix needs 4V^2 bytes (256 MB at V = 8,000), so part (a) stays in
-     * the thousands to keep the run short. The 10^5 to 10^6 vertices of part
-     * (b) would need 40 GB to 4 TB for the matrix.
+     * the thousands to keep the run short. V = 100,000 would need 40 GB for
+     * the matrix.
      */
     private static final int[] PART_A_VERTEX_COUNTS = {
         500, 1_000, 2_000, 3_000, 4_000, 5_000, 6_000, 7_000, 8_000
     };
 
-    /** The lists need only Theta(V + E) memory, so part (b) can go much further. */
+    /**
+     * The lists need only Theta(V + E) memory, so part (b) continues past part
+     * (a) up to V = E, where the graph is the Hamiltonian cycle alone. Up to
+     * 8,000 the values are those of part (a), so the first trials of each
+     * share their graphs.
+     */
     private static final int[] PART_B_VERTEX_COUNTS = {
-        1_000, 2_000, 5_000, 10_000, 20_000, 50_000,
-        100_000, 200_000, 500_000, 1_000_000
+        500, 1_000, 2_000, 3_000, 4_000, 5_000, 6_000, 7_000, 8_000,
+        10_000, 20_000, 50_000, 100_000
     };
 
     /** The branch control of part (a) compares two ways of writing the edge test at this |V|. */
@@ -83,7 +81,8 @@ public class ExperimentRunner {
     /**
      * Part (c) runs every implementation on every graph of this grid, with
      * random and worst-case weights only. The weightings are listed by name
-     * so that adding one does not change part (c).
+     * so that adding a weighting does not change which part (c)
+     * configurations are measured.
      */
     private static final Weights[] PART_C_WEIGHTS = {Weights.RANDOM, Weights.WORST_CASE};
     private static final int[] PART_C_VERTEX_COUNTS = {1_000, 2_000, 4_000, 8_000};
@@ -216,43 +215,45 @@ public class ExperimentRunner {
     private static void runPartA(Path varyVFile, Path varyEFile, Path controlFile)
             throws IOException {
         System.out.println("Running Part (a): adjacency matrix + array queue...");
-        long e = PART_A_FIXED_EDGE_COUNT;
-        for (int v : PART_A_VERTEX_COUNTS) {
-            if (e < v || e > GraphGenerator.maxEdges(v)) {
-                throw new IllegalStateException(
-                        "Part (a) needs V <= E <= V(V-1), but V = " + v + " and E = " + e + ".");
-            }
-        }
-
-        try (PrintWriter writer = newWriter(varyVFile)) {
-            writeSweepHeader(writer);
-            for (int v : PART_A_VERTEX_COUNTS) {
-                writeSweepRow(writer, Weights.RANDOM, "fixed_e", v, e,
-                        measure(Weights.RANDOM, Variant.MATRIX_ARRAY, v, e));
-            }
-        }
+        writeFixedESweep(varyVFile, Variant.MATRIX_ARRAY, PART_A_VERTEX_COUNTS);
         writeFixedVSweep(varyEFile, Variant.MATRIX_ARRAY);
         runBranchControl(controlFile);
     }
 
     /**
-     * Part (b): adjacency lists and min-heap. (i) |V| is varied with E = 10V
-     * and random weights; (ii) and (iii) vary |E| at a fixed |V| with every
-     * weighting, on the same graphs as part (a), so the two can be read side
-     * by side.
+     * Part (b): adjacency lists and min-heap. (i) |V| is varied at the same
+     * fixed |E| as part (a), with random weights; (ii) and (iii) vary |E| at a
+     * fixed |V| with every weighting. Both use the seeds of part (a), so the
+     * first trials of each configuration run on the same graphs.
      */
     private static void runPartB(Path varyVFile, Path varyEFile) throws IOException {
         System.out.println("Running Part (b): adjacency lists + min-heap...");
+        writeFixedESweep(varyVFile, Variant.LIST_HEAP, PART_B_VERTEX_COUNTS);
+        writeFixedVSweep(varyEFile, Variant.LIST_HEAP);
+    }
 
-        try (PrintWriter writer = newWriter(varyVFile)) {
-            writeSweepHeader(writer);
-            for (int v : PART_B_VERTEX_COUNTS) {
-                long e = (long) SPARSE_OUT_DEGREE * v;
-                writeSweepRow(writer, Weights.RANDOM, "sparse", v, e,
-                        measure(Weights.RANDOM, Variant.LIST_HEAP, v, e));
+    /**
+     * Varies |V| at FIXED_EDGE_COUNT with random weights: sub-experiment (i).
+     * Fails before measuring anything if some V cannot have that many edges.
+     */
+    private static void writeFixedESweep(Path outputFile, Variant variant, int[] vertexCounts)
+            throws IOException {
+        long e = FIXED_EDGE_COUNT;
+        for (int v : vertexCounts) {
+            if (e < v || e > GraphGenerator.maxEdges(v)) {
+                throw new IllegalStateException(
+                        variant.label + " needs V <= E <= V(V-1), but V = " + v
+                                + " and E = " + e + ".");
             }
         }
-        writeFixedVSweep(varyEFile, Variant.LIST_HEAP);
+
+        try (PrintWriter writer = newWriter(outputFile)) {
+            writeSweepHeader(writer);
+            for (int v : vertexCounts) {
+                writeSweepRow(writer, Weights.RANDOM, "fixed_e", v, e,
+                        measure(Weights.RANDOM, variant, v, e));
+            }
+        }
     }
 
     /**

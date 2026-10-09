@@ -14,7 +14,7 @@ import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-from matplotlib.ticker import FuncFormatter
+from matplotlib.ticker import FuncFormatter, NullFormatter
 
 # Fixed categorical order, so each implementation keeps its colour in every figure.
 ALGORITHM_COLOURS = {
@@ -94,6 +94,22 @@ def linear_fit(x_values, y_values):
     return mean_y - slope * mean_x, slope
 
 
+def relative_linear_fit(x_values, y_values):
+    """Fit y = intercept + slope * x by least squares on the relative error.
+
+    Each point is weighted by 1 / y^2, so a point at 0.1 ms counts as much as
+    one at 100 ms, which suits data spanning several orders of magnitude.
+    """
+    weights = [1.0 / (y * y) for y in y_values]
+    s0 = sum(weights)
+    s1 = sum(w * x for w, x in zip(weights, x_values))
+    s2 = sum(w * x * x for w, x in zip(weights, x_values))
+    t0 = sum(w * y for w, y in zip(weights, y_values))
+    t1 = sum(w * x * y for w, x, y in zip(weights, x_values, y_values))
+    slope = (s0 * t1 - s1 * t0) / (s0 * s2 - s1 * s1)
+    return (t0 - slope * s1) / s0, slope
+
+
 def harmonic(k):
     return sum(1.0 / i for i in range(1, int(round(k)) + 1))
 
@@ -103,14 +119,32 @@ def heap_term(row):
     return (row["v"] + row["e"]) * math.log2(row["v"])
 
 
-def key_comparisons(row):
-    return row["mean_queue_comparisons"] + row["mean_relaxations"]
+def forward_edges(e, vertex_count):
+    """Expected forward edges, so worst-case decrease-keys: (V-1)(E+V)/(2V), about (E+V)/2 - 1.
+
+    The V - 1 cycle edges all point forward, and a non-cycle edge does with
+    probability (V - 1) / (2V), just under one half.
+    """
+    return (vertex_count - 1) * (e + vertex_count) / (2 * vertex_count)
 
 
 def style_axis(axis):
     axis.grid(alpha=0.25)
     axis.spines["top"].set_visible(False)
     axis.spines["right"].set_visible(False)
+
+
+def label_vertex_axis(axis, vertex_counts):
+    """Label every measured V on a log x-axis, with thousands separators."""
+    axis.set_xticks(vertex_counts)
+    axis.xaxis.set_major_formatter(FuncFormatter(lambda x, _: f"{x:,.0f}"))
+    axis.xaxis.set_minor_formatter(NullFormatter())
+    axis.tick_params(axis="x", labelrotation=90, labelsize=8)
+
+
+def zero_based_ylim(axis, values):
+    """Start the y-axis at 0 with room above the largest value, so no marker is clipped."""
+    axis.set_ylim(0, 1.1 * max(values))
 
 
 def add_density_axis(axis, vertex_count):
@@ -136,8 +170,8 @@ def plot_case_decrease_keys(axis, rows, algorithm, vertex_count):
     """Decrease-keys against E for each weighting, with the three theoretical counts."""
     e = column(rows_where(rows, weights="random"), "e")
     axis.plot(
-        e, [x / 2 for x in e], linestyle="--", color=REFERENCE_COLOUR, linewidth=1.5,
-        label="E / 2: one per forward edge")
+        e, [forward_edges(x, vertex_count) for x in e], linestyle="--", color=REFERENCE_COLOUR,
+        linewidth=1.5, label="(E+V)/2 − 1: one per forward edge")
     axis.plot(
         e, [vertex_count * harmonic(x / vertex_count) for x in e], linestyle="-.",
         color=REFERENCE_COLOUR, linewidth=1.5, label="V·H(E/V): bound on the random-weight mean")
@@ -160,7 +194,7 @@ def plot_part_a_vary_v(results_directory, output_directory):
     edge_count = int(rows[0]["e"])
     v = column(rows, "v")
     times = column(rows, "median_cpu_time_ms")
-    figure, (time_axis, count_axis) = plt.subplots(1, 2, figsize=(13, 5))
+    figure, (time_axis, count_axis) = plt.subplots(1, 2, figsize=(13, 5.5))
 
     scale = log_scale_fit(times, [n * n for n in v])
     time_axis.plot(
@@ -186,13 +220,14 @@ def plot_part_a_vary_v(results_directory, output_directory):
     for axis in (time_axis, count_axis):
         axis.set_xscale("log")
         axis.set_yscale("log")
+        label_vertex_axis(axis, v)
         axis.set_xlabel("Number of vertices V (log scale)")
         style_axis(axis)
     time_axis.set_ylabel("Median CPU time (ms, log scale)")
     time_axis.set_title("Running time grows as V²")
     time_axis.legend(fontsize=9)
     count_axis.set_ylabel("Operations per run (log scale)")
-    count_axis.set_title("The V² terms grow; the E terms do not")
+    count_axis.set_title("The V² terms grow; relaxations stay at E")
     count_axis.legend(fontsize=8)
 
     figure.suptitle(
@@ -207,11 +242,13 @@ def plot_part_a_vary_e(results_directory, output_directory):
     rows = rows_where(read_csv(results_directory / "part_a_vary_e.csv"), weights="random")
     vertex_count = int(rows[0]["v"])
     e = column(rows, "e")
+    times = column(rows, "median_cpu_time_ms")
+    spread = max(times) / min(times) - 1
     figure, (time_axis, count_axis) = plt.subplots(1, 2, figsize=(13, 5))
 
     time_axis.plot(
-        e, column(rows, "median_cpu_time_ms"), marker="o",
-        color=ALGORITHM_COLOURS["Matrix + array (a)"], linewidth=2, label="random weights")
+        e, times, marker="o", color=ALGORITHM_COLOURS["Matrix + array (a)"], linewidth=2,
+        label="random weights")
     count_axis.plot(
         e, column(rows, "mean_entries_scanned"), marker="o", color=SERIES_COLOURS[2],
         linewidth=2, label="matrix cells read = V²")
@@ -230,9 +267,11 @@ def plot_part_a_vary_e(results_directory, output_directory):
         axis.set_xlabel("Number of edges E (log scale)")
         add_density_axis(axis, vertex_count)
         style_axis(axis)
-    time_axis.set_ylim(bottom=0)
+    zero_based_ylim(time_axis, times)
     time_axis.set_ylabel("Median CPU time (ms)")
-    time_axis.set_title("The running time does not depend on E", pad=12)
+    time_axis.set_title(
+        f"The time hardly depends on E: within {spread:.0%} while E grows "
+        f"{max(e) / min(e):,.0f}-fold", pad=12, fontsize=11)
     time_axis.legend(fontsize=9, loc="lower right")
     count_axis.set_yscale("log")
     count_axis.set_ylabel("Operations per run (log scale)")
@@ -255,13 +294,13 @@ def plot_part_a_cases(results_directory, output_directory):
 
     plot_case_times(time_axis, rows, algorithm)
     time_axis.set_xscale("log")
-    time_axis.set_ylim(bottom=0)
+    zero_based_ylim(time_axis, column(rows, "median_cpu_time_ms"))
     time_axis.set_ylabel("Median CPU time (ms)")
     time_axis.set_title("Same Θ(V²) work; the worst case pays for wrong guesses", pad=12)
     time_axis.legend(fontsize=8, loc="upper left")
 
     plot_case_decrease_keys(count_axis, rows, algorithm, vertex_count)
-    count_axis.set_title("Decrease-keys: V − 1, about V·H(E/V), about E/2", pad=12)
+    count_axis.set_title("Decrease-keys: V − 1, at most V·H(E/V), (E+V)/2 − 1", pad=12)
     count_axis.legend(fontsize=7.5, loc="upper left")
 
     for axis in (time_axis, count_axis):
@@ -280,16 +319,18 @@ def plot_part_a_cases(results_directory, output_directory):
 def plot_part_a_branch_control(results_directory, output_directory):
     rows = read_csv(results_directory / "part_a_branch_control.csv")
     vertex_count = int(rows[0]["v"])
-    density = [row["density"] for row in rows]
+    density = column(rows, "density")
+    no_if = column(rows, "median_cpu_time_ms_no_if")
+    separate_if = column(rows, "median_cpu_time_ms_separate_if")
 
     figure, axis = plt.subplots(figsize=(8, 5))
     axis.plot(
-        density, [row["median_cpu_time_ms_no_if"] for row in rows], marker="o",
-        color=SERIES_COLOURS[0], linewidth=2, label="shipped code: no if on the edge test")
+        density, no_if, marker="o", color=SERIES_COLOURS[0], linewidth=2,
+        label="shipped code: no if on the edge test")
     axis.plot(
-        density, [row["median_cpu_time_ms_separate_if"] for row in rows], marker="s",
-        color=SERIES_COLOURS[1], linewidth=2, label="control: if (there is an edge) { ... }")
-    axis.set_ylim(bottom=0)
+        density, separate_if, marker="s", color=SERIES_COLOURS[1], linewidth=2,
+        label="control: if (there is an edge) { ... }")
+    zero_based_ylim(axis, no_if + separate_if)
     axis.set_xlabel("Density E / V(V-1)")
     axis.set_ylabel("Median CPU time (ms)")
     axis.set_title("Same work, same graphs: only the if-statement differs")
@@ -302,53 +343,72 @@ def plot_part_a_branch_control(results_directory, output_directory):
 
 
 def plot_part_b_vary_v(results_directory, output_directory):
+    """(b)(i), with (a)(i) on the same axes: both use the same E and the same seeds."""
     rows = rows_where(read_csv(results_directory / "part_b_vary_v.csv"), weights="random")
-    out_degree = rows[0]["e"] / rows[0]["v"]
+    edge_count = int(rows[0]["e"])
     v = column(rows, "v")
     times = column(rows, "median_cpu_time_ms")
-    colour = ALGORITHM_COLOURS["Lists + heap (b)"]
-    figure, (time_axis, ratio_axis, cost_axis) = plt.subplots(1, 3, figsize=(18, 5))
+    heap_comparisons = column(rows, "mean_queue_comparisons")
+    figure, (time_axis, count_axis) = plt.subplots(1, 2, figsize=(15, 6))
+    all_times = list(times)
 
-    term = [heap_term(row) for row in rows]
-    scale = log_scale_fit(times, term)
+    matrix_file = results_directory / "part_a_vary_v.csv"
+    if matrix_file.exists():
+        matrix_rows = read_csv(matrix_file)
+        matrix_v = column(matrix_rows, "v")
+        matrix_times = column(matrix_rows, "median_cpu_time_ms")
+        all_times += matrix_times
+        scale = log_scale_fit(matrix_times, [n * n for n in matrix_v])
+        time_axis.plot(
+            matrix_v, [scale * n * n for n in matrix_v], linestyle=":", color=REFERENCE_COLOUR,
+            linewidth=1.5, label="(a): fitted c·V²")
+        time_axis.plot(
+            matrix_v, matrix_times, marker="s", color=ALGORITHM_COLOURS["Matrix + array (a)"],
+            linewidth=2, label="(a) matrix + array, from part (a)(i)")
+    intercept, slope = relative_linear_fit(heap_comparisons, times)
     time_axis.plot(
-        v, [scale * x for x in term], linestyle=":", color=REFERENCE_COLOUR,
-        linewidth=1.5, label="fitted c·(V+E) log₂V")
-    time_axis.plot(v, times, marker="o", color=colour, linewidth=2, label="measured")
+        v, [intercept + slope * h for h in heap_comparisons], linestyle="--",
+        color=REFERENCE_COLOUR, linewidth=1.5,
+        label=(f"(b): A + B·(measured heap comparisons), least squares\n"
+               f"on relative error: A = {intercept:.2f} ms, B = {slope * 1e6:.1f} ns"))
+    time_axis.plot(
+        v, times, marker="o", color=ALGORITHM_COLOURS["Lists + heap (b)"], linewidth=2,
+        label="(b) lists + heap")
 
-    ratio_axis.plot(
-        v, [key_comparisons(row) / heap_term(row) for row in rows], marker="o",
-        color=SERIES_COLOURS[0], linewidth=2, label="key comparisons / ((V+E) log₂V)")
-    ratio_axis.plot(
-        v, [row["mean_decrease_keys"] / (row["v"] * harmonic(row["e"] / row["v"]))
-            for row in rows],
-        marker="s", color=SERIES_COLOURS[2], linewidth=2,
-        label="decrease-keys / (V·H(E/V))")
-    cost_axis.plot(
-        v, [row["median_cpu_time_ms"] * 1e6 / key_comparisons(row) for row in rows],
-        marker="o", color=colour, linewidth=2)
+    count_axis.plot(
+        v, [n * math.log2(n) for n in v], linestyle=":", color=REFERENCE_COLOUR,
+        linewidth=1.5, label="V·log₂V")
+    count_axis.plot(
+        v, heap_comparisons, marker="^", color=SERIES_COLOURS[3], linewidth=2,
+        label="heap comparisons")
+    count_axis.plot(
+        v, column(rows, "mean_relaxations"), marker="s", color=SERIES_COLOURS[0],
+        linewidth=2, label=f"relaxations = E = {edge_count:,}")
+    count_axis.plot(
+        v, [n * harmonic(edge_count / n) for n in v], linestyle="-.", color=REFERENCE_COLOUR,
+        linewidth=1.5, label="V·H(E/V): bound on mean decrease-keys")
+    count_axis.plot(
+        v, column(rows, "mean_decrease_keys"), marker="o", color=SERIES_COLOURS[2],
+        linewidth=2, label="decrease-keys")
 
-    time_axis.set_xscale("log")
-    time_axis.set_yscale("log")
-    time_axis.set_ylabel("Median CPU time (ms, log scale)")
-    time_axis.set_title("Running time")
-    time_axis.legend(fontsize=9)
-    ratio_axis.set_xscale("log")
-    ratio_axis.set_ylim(0, 1)
-    ratio_axis.set_ylabel("Measured count / theoretical term")
-    ratio_axis.set_title("Counts divided by their theoretical terms stay nearly constant")
-    ratio_axis.legend(fontsize=8, loc="lower left")
-    cost_axis.set_xscale("log")
-    cost_axis.set_ylim(bottom=0)
-    cost_axis.set_ylabel("Nanoseconds per key comparison")
-    cost_axis.set_title("Cost per operation rises once data outgrows the cache")
-    for axis in (time_axis, ratio_axis, cost_axis):
+    for axis in (time_axis, count_axis):
+        axis.set_xscale("log")
+        axis.set_yscale("log")
+        label_vertex_axis(axis, v)
         axis.set_xlabel("Number of vertices V (log scale)")
         style_axis(axis)
+    # Room above the data for the legend.
+    time_axis.set_ylim(0.8 * min(all_times), 12 * max(all_times))
+    time_axis.set_ylabel("Median CPU time (ms, log scale)")
+    time_axis.set_title(f"Same E = {edge_count:,}: (a) grows as V², (b) far more slowly")
+    time_axis.legend(fontsize=8, loc="upper left")
+    count_axis.set_ylabel("Operations per run (log scale), part (b)")
+    count_axis.set_title("(b): heap work grows like V log V; relaxations stay at E")
+    count_axis.legend(fontsize=8, loc="upper left")
 
     figure.suptitle(
-        f"Part (b)(i): adjacency lists + min-heap, varying V with E = {out_degree:.0f}V "
-        "(random weights)")
+        f"Part (b)(i): adjacency lists + min-heap, varying V at E = {edge_count:,} "
+        "(random weights), with part (a)(i)")
     figure.tight_layout(rect=(0, 0, 1, 0.94), w_pad=3.0)
     figure.savefig(output_directory / "part_b_vary_v.png", dpi=200)
     plt.close(figure)
@@ -363,9 +423,10 @@ def plot_part_b_vary_e(results_directory, output_directory):
     figure, (time_axis, count_axis) = plt.subplots(1, 2, figsize=(13, 5))
 
     intercept, slope = linear_fit(e, times)
+    fitted = [intercept + slope * x for x in e]
     time_axis.plot(
-        e, [intercept + slope * x for x in e], linestyle=":", color=REFERENCE_COLOUR,
-        linewidth=1.5, label=f"least-squares a + b·E, b = {slope * 1e6:.2f} ns per edge")
+        e, fitted, linestyle=":", color=REFERENCE_COLOUR, linewidth=1.5,
+        label=f"least-squares a + b·E, b = {slope * 1e6:.2f} ns per edge")
     time_axis.plot(e, times, marker="o", color=colour, linewidth=2, label="random weights")
 
     count_axis.plot(
@@ -381,7 +442,7 @@ def plot_part_b_vary_e(results_directory, output_directory):
         e, column(rows, "mean_decrease_keys"), marker="o", color=SERIES_COLOURS[2],
         linewidth=2, label="decrease-keys")
 
-    time_axis.set_ylim(bottom=0)
+    zero_based_ylim(time_axis, times + fitted)
     time_axis.set_xlim(left=0)
     time_axis.xaxis.set_major_formatter(FuncFormatter(lambda x, _: f"{x / 1e6:g}"))
     time_axis.set_xlabel("Number of edges E (millions)")
@@ -417,7 +478,7 @@ def plot_part_b_cases(results_directory, output_directory):
     scale = log_scale_fit(column(worst, "median_cpu_time_ms"), term)
     time_axis.plot(
         column(worst, "e"), [scale * x for x in term], linestyle=":", color=REFERENCE_COLOUR,
-        linewidth=1.5, label="fitted c·(V+E) log₂V, worst case")
+        linewidth=1.5, label="c·(V+E) log₂V, c fitted to all worst-case points")
     plot_case_times(time_axis, rows, algorithm)
     time_axis.set_xscale("log")
     time_axis.set_yscale("log")
@@ -426,7 +487,7 @@ def plot_part_b_cases(results_directory, output_directory):
     time_axis.legend(fontsize=8, loc="upper left")
 
     plot_case_decrease_keys(count_axis, rows, algorithm, vertex_count)
-    count_axis.set_title("Decrease-keys: V − 1, about V·H(E/V), about E/2", pad=12)
+    count_axis.set_title("Decrease-keys: V − 1, at most V·H(E/V), (E+V)/2 − 1", pad=12)
     count_axis.legend(fontsize=7.5, loc="upper left")
 
     for axis in (time_axis, count_axis):

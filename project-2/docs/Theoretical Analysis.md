@@ -47,9 +47,10 @@ graphs every vertex is reachable, so `R = V`.
 ## Best, average and worst case
 
 The numbers of extractions, edge scans and relaxations above do not depend
-on the weights. Only the number of `Decrease-Key` calls does, and it lies
-between `R − 1` and `E`. The experiments use three weightings of the same
-edges, one for each case.
+on the weights. The number of `Decrease-Key` calls does, and it lies between
+`R − 1` and `E`; in the heap, the cost of each extraction and each
+`Decrease-Key` also depends on the keys. The experiments use three weightings
+of the same edges, one for each case.
 
 ### Best case: uniform weights, exactly `V − 1` calls
 
@@ -91,20 +92,63 @@ expected number of `Decrease-Key` calls is at most
 `V · H(E/V) ≈ V(ln(E/V) + 0.58)`, far below `E` when `E/V` is large (Noshita,
 1985, proves an `O(V(1 + log(E/V)))` bound for random weights).
 
-### Worst case: worst-case weights, about `E/2` calls
+### Worst case: worst-case weights, `(E + V)/2 − 1` calls
 
 `GraphGenerator.worstCaseGraph` keeps the same edges and picks weights that
 make as many relaxations as possible lower a key. Every generated graph
 contains a cycle through all vertices (a Hamiltonian cycle). Number the
-vertices `x₀ = s, x₁, x₂, ...` along it and give each cycle edge weight 1, so
-`d(xᵢ) = i` and the vertices are extracted in exactly this order. Every other
-edge from `xᵢ` to a later vertex (a *forward edge*) gets a weight chosen so
-that its new key `d(xᵢ) + w` is smaller than every key set earlier, and these
-keys fall along `xᵢ`'s adjacency list. So every relaxation of a forward edge
-lowers a key below every other key in the queue, except `xᵢ₊₁`'s key `i + 1`
-once the cycle edge to `xᵢ₊₁` has been relaxed. Edges back to earlier
-vertices never lower a key, because their target is already finished. With
-about half the edges pointing forward, `Decrease-Key` runs about `E/2` times.
+vertices `x₀ = s, x₁, ..., x_{V−1}` along it. A *forward edge* is an edge
+from `xᵢ` to a later vertex `x_k`, `k > i`. This includes the `V − 1` cycle
+edges `xᵢ → xᵢ₊₁`; only the closing cycle edge `x_{V−1} → x₀` points back.
+Let `Fᵢ` be the number of forward edges of `xᵢ` other than its cycle edge.
+
+The weights are:
+
+- weight 1 for every cycle edge and every edge back to an earlier vertex;
+- weight `gap[i] + r` for the `r`-th-from-last non-cycle forward edge in
+  `xᵢ`'s adjacency list, so `r` counts down from `Fᵢ` to 1 along the list,
+  where `gap[V − 1] = 0` and `gap[i − 1] = gap[i] + Fᵢ + 2`.
+
+Two facts follow.
+
+1. **There is no shortcut, so `d(x_k) = k`.** Each step back from `x_{V−1}`
+   adds at least 2 to `gap`, so `gap[i] ≥ 2(V − 1 − i)`. A non-cycle forward
+   edge from `xᵢ` to `x_k` therefore has `i + gap[i] + r ≥ 2V − 1 − i > k`,
+   that is, weight greater than `k − i`. A cycle edge has weight exactly
+   `k − i = 1`, and a back edge has weight `1 > k − i`. Every edge from `xᵢ`
+   to `x_k` thus weighs at least `k − i`, and along any path from `x₀` to
+   `x_k` these differences add up to `k`. So `d(x_k) ≥ k`, the cycle path
+   reaches `x_k` with length exactly `k`, and the vertices are extracted in
+   the order `x₀, x₁, x₂, ...`.
+2. **Every key set while `xᵢ` is processed is below every key set earlier,
+   except `xᵢ₊₁`'s key `i + 1`.** The non-cycle forward edges of `xᵢ` set
+   keys `i + gap[i] + r`, between `i + gap[i] + 1` and `i + gap[i] + Fᵢ`,
+   and these fall along the list. A key set by a non-cycle forward edge of
+   `xᵢ₋₁` is at least `(i − 1) + gap[i − 1] + 1 = i + gap[i] + Fᵢ + 2`,
+   larger than all of them, and keys set by earlier vertices are larger
+   still. The cycle edge sets `xᵢ₊₁`'s key to `i + 1`, below all of them.
+
+So every relaxation of a forward edge lowers a key: its target is not yet
+finished, and its key is `∞` or was set earlier, so it is larger. Edges back
+to earlier vertices never lower a key, because their target is already
+finished. The number of `Decrease-Key` calls is therefore exactly the number
+of forward edges, which `CorrectnessCheck` confirms for all four
+implementations.
+
+How many edges point forward: all `V − 1` forward cycle edges, plus about
+half of the other `E − V` edges. A non-cycle target of `xᵢ` is drawn from the
+`V − 2` vertices other than `xᵢ` and its successor, and `V − 2 − i` of them
+come later on the cycle (none for `x_{V−1}`). Averaged over all `i` that is a
+fraction
+`(V − 1)/(2V)`, just under one half, so the expected count is
+
+```text
+(V − 1) + (E − V)(V − 1)/(2V) = (V − 1)(E + V)/(2V) ≈ (E + V)/2 − 1,
+```
+
+about `E/2` when `E ≫ V`. It is `V − 1` for a single cycle (`E = V`, about
+twice `E/2`), about 1.5 times `E/2` at `E = 2V`, and exactly `V(V − 1)/2` for the
+complete graph. The experiments match it within 0.1%.
 
 ## Part (a): adjacency matrix + array priority queue
 
@@ -143,7 +187,8 @@ T_a(V, E) = Θ(V) + Θ(V²) + Θ(V²) + Θ(E) + O(E) = Θ(V² + E) = Θ(V²),   
   `Decrease-Key` calls, at `O(1)` each. That work is never larger than the
   `V²` cells already read.
 - **Best, average and worst case:** `V − 1`, at most about `V · H(E/V)`, and
-  about `E/2` `Decrease-Key` calls, each `O(1)`. All three cases are
+  `(E + V)/2 − 1` (about `E/2` when `E ≫ V`) `Decrease-Key` calls, each
+  `O(1)`. All three cases are
   therefore `Θ(V²)` on graphs where every vertex is reachable. On real
   hardware the worst case still costs more per cell at middle densities,
   because the CPU often guesses the outcome of the relaxation test wrongly
@@ -215,15 +260,24 @@ for the number of calls).
 
   which, for a fixed `V`, grows linearly in `E`.
 
-- **Worst case, worst-case weights.** About `E/2` calls. Each new key is
-  smaller than every other key in the heap except possibly `xᵢ₊₁`'s, so the
-  vertex climbs from its current node to the root, or to a child of the root
-  when `xᵢ₊₁` holds the root: at most `⌊log V⌋` levels. On the complete graph
-  with `V = 5,000` each call makes 10.6 heap comparisons on average (README,
-  part (b)(iii)). A climb of `L` levels makes `L` comparisons if it reaches
-  the root and `L + 1` if it stops below it, which happens for about half of
-  the calls, so the average climb is about 10.1 levels, out of at most 12.
-  This input therefore reaches the bound: `Θ(E log V)`.
+- **Worst case, worst-case weights.** `(E + V)/2 − 1` calls, about `E/2`
+  when `E ≫ V`. Each new key is smaller than every other key in the heap
+  except possibly `xᵢ₊₁`'s, so the vertex climbs from its current node to the
+  root, or to a child of the root when `xᵢ₊₁` holds the root: at most
+  `⌊log V⌋` levels. On the complete graph with `V = 5,000` each call makes
+  10.6 heap comparisons on average (README, part (b)(iii)). A climb of `L`
+  levels makes `L` comparisons if it reaches the root and `L + 1` if it stops
+  below it, which happens for about half of the calls, so the average climb
+  is about 10.1 levels, out of at most 12.
+
+  The climb grows with `log V`, not just at one size. Part (c) ran the same
+  weights on complete graphs of 1,000 to 8,000 vertices. There each call
+  makes 8.39, 9.35, 10.33 and 11.32 heap comparisons at `V` = 1,000, 2,000,
+  4,000 and 8,000 (heap comparisons with worst-case weights minus those with
+  random weights on the same edges, divided by the extra calls). That is
+  `log₂V − 1.6` at every size (1.58 to 1.64 below `log₂V`): one more
+  comparison each time `V` doubles. This input therefore reaches the bound:
+  `Θ(E log V)`.
 
 ## Part (c): which is better, and when
 
@@ -258,7 +312,7 @@ per heap operation.
 Three things that the time bounds do not show also decide the choice:
 
 - **Memory.** The matrix needs `4V²` bytes even for a sparse graph: 400 MB for
-  `V = 10,000` and 4 TB for `V = 1,000,000`. The lists need about `8E + 40V`
+  `V = 10,000` and 40 GB for `V = 100,000`. The lists need about `8E + 40V`
   bytes, so they use less memory below density 0.5 and about twice as much as
   the matrix on a complete graph: each edge stores its target (4 bytes) as
   well as its weight (4 bytes), while a matrix cell stores only the weight.

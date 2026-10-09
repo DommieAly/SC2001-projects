@@ -38,7 +38,9 @@ because that vertex's distance is already the smallest.
 
 - **Terms.** *Density* is `E / V(V − 1)`, the fraction of all possible edges
   that are present. A *forward edge* is an edge to a vertex that comes later
-  on the graph's Hamiltonian cycle (see below), counted from the source.
+  on the graph's Hamiltonian cycle (see below), counted from the source; the
+  `V − 1` cycle edges themselves are forward edges, except the one that
+  closes the cycle.
 - **Graphs.** Directed, with exactly `E` edges. Every vertex has out-degree
   `⌊E/V⌋` or `⌈E/V⌉`, with targets drawn uniformly at random and without
   repeats. Every graph contains a random cycle through all vertices (a
@@ -47,8 +49,10 @@ because that vertex's distance is already the smallest.
   scanned them, which would favour (b) for a reason unrelated to the data
   structures. Each adjacency list is sorted by target, the order in which a
   scan of the matrix row meets them.
-- **Three weightings of the same edges, one per case.** Only the number of
-  relaxations that lower a key (decrease-keys) depends on the weights.
+- **Three weightings of the same edges, one per case.** None of the
+  operation counts (extractions, matrix cells or list entries read,
+  relaxations) depends on the weights. The number of decrease-keys does, and
+  in the heap so does the cost of each operation.
   - *Uniform weights (best case):* every weight is 1. The first relaxation
     that reaches a vertex already sets its final distance, so exactly
     `V − 1` relaxations lower a key, the fewest possible (proof in the theory
@@ -59,24 +63,31 @@ because that vertex's distance is already the smallest.
     `H(k) = 1 + 1/2 + ... + 1/k`.
   - *Worst-case weights:* chosen so that every relaxation of a forward edge
     lowers a key below every other key in the queue, except possibly the key
-    of the next vertex on the cycle. That is about `E/2` decrease-keys, and
-    in the heap every one climbs to the root or to a child of the root. This
-    is the input behind the `E log V` term of (b), which random weights
-    never reach. `CorrectnessCheck` confirms that the decrease-key count
-    equals the number of forward edges.
+    of the next vertex on the cycle. That is `(E + V)/2 − 1` decrease-keys
+    on average, about `E/2` when `E ≫ V`, and in the heap every one climbs
+    to the root or to a child of the root. This is the input behind the
+    `E log V` term of (b), which random weights never reach.
+    `CorrectnessCheck` confirms that the decrease-key count equals the
+    number of forward edges.
 - **One change at a time.** Parts (a) and (b) each run three experiments:
-  - **(i) vary `V`**, with `E` (part a) or `E/V` (part b) fixed, random
-    weights;
+  - **(i) vary `V`** with `E` fixed at 100,000, random weights;
   - **(ii) vary `E`** at `V = 5,000`, random weights, over 17 edge counts
     from a single cycle (`E = V`) to the complete graph;
   - **(iii) best, average and worst case:** the sweep of (ii) with all three
     weightings.
 
   (ii) and (iii) share one CSV file per part, and (ii) is its random-weight
-  rows. Parts (a) and (b) run on the same graphs in (ii) and (iii), so their
-  times can be compared row by row.
+  rows.
 - **Seeds.** The base seed is `20261004`. A given `(V, E, trial)` always
-  produces the same edges, in every part and in every weighting.
+  produces the same edges, in every part and in every weighting. Parts (a)
+  and (b) therefore run on graphs from the same seeds wherever their
+  configurations meet: in (i) up to `V = 8,000`, and in (ii) and (iii). The
+  first 10 trials are the same graphs; (b) runs extra trials on small graphs,
+  and the two parts are measured in separate runs. With random integer
+  weights equal distances occur, and the array queue and the heap break ties
+  differently, so random-weight decrease-key counts differ slightly between
+  (a) and (b) even on the same graph: at density 0.5 the same 10 graphs give
+  32,902.2 decrease-keys on average in (a) and 32,910.5 in (b).
 - **Trials.** Each trial of a configuration uses a new graph, so no
   implementation is timed twice in a row on the same graph. Repeating one
   graph lets the CPU learn the run and makes short runs look faster. Each
@@ -86,8 +97,9 @@ because that vertex's distance is already the smallest.
   generation, building the matrix, and verification are not timed. Medians
   are reported. The JVM is warmed up on every implementation first. All runs
   were on an Apple M2 Pro with Java 23 and `-Xmx6g`. Parts (a) and (b) were
-  last run on battery power with macOS Low Power Mode on; part (c) comes
-  from an earlier run of the same code.
+  measured on 2026-10-09 on AC power with macOS Low Power Mode off. Part (c)
+  comes from an earlier run (2026-10-04) of the same implementations and
+  part (c) code; its measurements were not repeated.
 - **Counts.** Machine-independent counts are recorded next to the time:
   - *queue comparisons:* key comparisons inside the priority queue;
   - *relaxations:* edges `(u, v)` tested with `d[u] + w(u, v) < d[v]`
@@ -114,19 +126,21 @@ from 0.40 to 0.0016.
 
 | V | Density | Time | Time ÷ V² | Decrease-keys |
 |---:|---:|---:|---:|---:|
-| 500 | 0.40 | 0.253 ms | 1.01 ns | 2,385 |
-| 1,000 | 0.10 | 0.915 ms | 0.92 ns | 4,148 |
-| 2,000 | 0.025 | 3.700 ms | 0.93 ns | 6,965 |
-| 4,000 | 0.0063 | 15.08 ms | 0.94 ns | 11,321 |
-| 8,000 | 0.0016 | 56.98 ms | 0.89 ns | 17,493 |
+| 500 | 0.40 | 0.251 ms | 1.00 ns | 2,385 |
+| 1,000 | 0.10 | 0.917 ms | 0.92 ns | 4,148 |
+| 2,000 | 0.025 | 3.506 ms | 0.88 ns | 6,964 |
+| 4,000 | 0.0063 | 14.32 ms | 0.90 ns | 11,321 |
+| 8,000 | 0.0016 | 57.15 ms | 0.89 ns | 17,493 |
 
 - The time grows with slope 1.97 on a log-log plot (least squares over all
-  nine `V`; 1.98 without `V = 500`), against 2 for `V²`. Time divided by the
-  `V²` cells read stays between 0.89 and 1.01 ns, which includes the
+  nine `V`; 1.99 without `V = 500`), against 2 for `V²`. Time divided by the
+  `V²` cells read stays between 0.88 and 1.00 ns, which includes the
   `V(V − 1)/2` queue comparisons.
 - In every row, cells read is exactly `V²`, queue comparisons exactly
-  `V(V − 1)/2`, and relaxations exactly `E = 100,000`. The work that depends
-  on `E` is the same in every row, so all of the growth comes from `V`.
+  `V(V − 1)/2`, and relaxations exactly `E = 100,000`. The decrease-keys
+  grow with `V`, from 2,385 to 17,493 (about 0.7-0.8 of `V · H(E/V)`), but each
+  costs `O(1)` and they are at most 1% of the `V²` cells read (0.95% at
+  `V = 500`, 0.03% at `V = 8,000`). So the growth comes from `V`.
 
 ![Part (a)(i), varying V](plots/part_a_vary_v.png)
 
@@ -137,16 +151,16 @@ fixed at 5,000; random weights.
 
 | E | Density | Time | Relaxations | Decrease-keys |
 |---:|---:|---:|---:|---:|
-| 5,000 | 0.0002 | 22.24 ms | 5,000 | 4,999 |
-| 1,000,000 | 0.04 | 22.44 ms | 1,000,000 | 23,980 |
-| 12,500,000 | 0.5 | 23.18 ms | 12,500,000 | 32,902 |
-| 17,500,000 | 0.7 | 23.51 ms | 17,500,000 | 33,462 |
-| 24,995,000 | 1.0 | 22.79 ms | 24,995,000 | 34,043 |
+| 5,000 | 0.0002 | 23.17 ms | 5,000 | 4,999 |
+| 1,000,000 | 0.04 | 22.57 ms | 1,000,000 | 23,980 |
+| 12,500,000 | 0.5 | 22.66 ms | 12,500,000 | 32,902 |
+| 17,500,000 | 0.7 | 22.70 ms | 17,500,000 | 33,462 |
+| 24,995,000 | 1.0 | 22.83 ms | 24,995,000 | 34,043 |
 
-- The time stays between 22.24 and 23.51 ms (within 5.7%) while `E` grows
+- The time stays between 22.25 and 23.62 ms (within 6.1%) while `E` grows
   4,999-fold, as `Θ(V²)` predicts. A least-squares line through the 17
-  times rises by 0.03 ns per edge, against 0.86 ns per edge for (b) on the
-  same graphs.
+  times rises by 0.01 ns per edge, against 0.87 ns per edge for (b) in
+  (b)(ii).
 - Cells read (25,000,000 = `V²`) and queue comparisons
   (12,497,500 = `V(V − 1)/2`) are the same in every row. Only the
   relaxations (`= E`) and the decrease-keys grow with `E`, and even on the
@@ -161,26 +175,29 @@ The sweep of (ii) with uniform, random and worst-case weights.
 
 | E | Density | Time, uniform | Time, random | Time, worst case | Decrease-keys, uniform | Decrease-keys, random | Decrease-keys, worst case |
 |---:|---:|---:|---:|---:|---:|---:|---:|
-| 5,000 | 0.0002 | 22.48 ms | 22.24 ms | 22.67 ms | 4,999 | 4,999 | 4,999 |
-| 1,000,000 | 0.04 | 22.01 ms | 22.44 ms | 27.13 ms | 4,999 | 23,980 | 502,410 |
-| 12,500,000 | 0.5 | 22.79 ms | 23.18 ms | 72.45 ms | 4,999 | 32,902 | 6,251,326 |
-| 17,500,000 | 0.7 | 22.66 ms | 23.51 ms | 80.47 ms | 4,999 | 33,462 | 8,750,640 |
-| 24,995,000 | 1.0 | 22.23 ms | 22.79 ms | 27.80 ms | 4,999 | 34,043 | 12,497,500 |
+| 5,000 | 0.0002 | 22.54 ms | 23.17 ms | 22.59 ms | 4,999 | 4,999 | 4,999 |
+| 1,000,000 | 0.04 | 21.80 ms | 22.57 ms | 27.50 ms | 4,999 | 23,980 | 502,410 |
+| 12,500,000 | 0.5 | 21.96 ms | 22.66 ms | 72.17 ms | 4,999 | 32,902 | 6,251,326 |
+| 17,500,000 | 0.7 | 21.92 ms | 22.70 ms | 80.60 ms | 4,999 | 33,462 | 8,750,640 |
+| 24,995,000 | 1.0 | 22.39 ms | 22.83 ms | 27.74 ms | 4,999 | 34,043 | 12,497,500 |
 
 - **The decrease-keys follow the theory.** Uniform weights give exactly
-  4,999 = `V − 1` in every row. Random weights give 4,999 to 34,043, below
-  `V · H(E/V)`. Worst-case weights give one per forward edge, about `E/2`.
-- **Best and average case take the same time,** within 3.6% at every `E`
-  (uniform 21.87-23.17 ms, random 22.24-23.51 ms). Both lower few keys, at
-  `O(1)` each, so the `V²` scan decides.
-- **The worst case is not flat.** It matches random weights up to
-  `E = 100,000` (within 2%), rises to a peak of 80.47 ms at density 0.7,
-  3.42 times the random-weight time, and falls back to 27.80 ms on the
-  complete graph, although that graph has the most decrease-keys.
+  4,999 = `V − 1` in every row. Random weights give 4,999 to 34,043, at most
+  `V · H(E/V)` (0.64-0.82 of it for `E > V`). Worst-case weights give one
+  per forward edge, `(E + V)/2 − 1` to within 0.1%: 7,502 at `E = 2V`,
+  1.5 times `E/2`, and about `E/2` once `E ≫ V`.
+- **Best and average case take nearly the same time.** Relative to the
+  random-weight time at the same `E`, uniform weights take between 6.8% less
+  and 1.1% more, 2.3% less on average. Both lower few keys, at `O(1)` each,
+  so the `V²` scan decides.
+- **The worst case is not flat.** It stays within 6.2% of random weights up
+  to `E = 100,000`, rises to a peak of 80.60 ms at density 0.7, 3.55 times
+  the random-weight time, and falls back to 27.74 ms on the complete graph,
+  although that graph has the most decrease-keys.
 
 **Why the worst case has a bump.** The extra work itself is cheap: on the
 complete graph, 12,463,457 more decrease-keys than with random weights add
-5.01 ms, 0.40 ns each. At density 0.5 the extra decrease-keys cost 7.9 ns
+4.90 ms, 0.39 ns each. At density 0.5 the extra decrease-keys cost 8.0 ns
 each. The difference is the relaxation test `if (candidate < d[v])`. The CPU
 guesses the outcome of every `if` before it is known, and throws work away
 when the guess is wrong (see the [appendix](#appendix-why-the-matrix-scan-has-no-if-statement)).
@@ -192,22 +209,27 @@ when the guess is wrong (see the [appendix](#appendix-why-the-matrix-scan-has-no
   best guess is wrong in about `min(p, 1 − p)` of the cells. Averaged over
   the run that is `d/2` up to `d = 0.5`, with a peak of 0.29 at
   `d = 1/√2 ≈ 0.71`.
-- The extra time over random weights follows this shape up to density 0.8,
-  at 7.5-8.8 ns per predicted wrong guess:
+- From density 0.1 to 0.8 the extra time over random weights follows this
+  shape, at 7.4-9.1 ns per predicted wrong guess; at 0.8 it is already 7%
+  below the model. Below density 0.1 the extra time is under 5 ms, too
+  little for a stable estimate per wrong guess.
 
   | Density | 0.1 | 0.2 | 0.4 | 0.5 | 0.6 | 0.7 | 0.8 | 0.9 | 1.0 |
   |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-  | Extra time over random weights | 11.0 ms | 20.8 ms | 39.9 ms | 49.3 ms | 55.9 ms | 57.0 ms | 54.1 ms | 41.9 ms | 5.0 ms |
-  | Measured, relative to density 0.5 | 0.22 | 0.42 | 0.81 | 1 | 1.13 | 1.16 | 1.10 | 0.85 | 0.10 |
+  | Extra time over random weights | 11.4 ms | 21.0 ms | 39.9 ms | 49.5 ms | 56.4 ms | 57.9 ms | 53.2 ms | 41.2 ms | 4.9 ms |
+  | Measured, relative to density 0.5 | 0.23 | 0.42 | 0.81 | 1 | 1.14 | 1.17 | 1.07 | 0.83 | 0.10 |
   | Model `min(p, 1 − p)`, relative to density 0.5 | 0.20 | 0.40 | 0.80 | 1 | 1.13 | 1.17 | 1.15 | 1.09 | 1.00 |
 
-- At densities 0.9 and 1.0 the model predicts too much, because the passes
-  are no longer scattered at random. On the complete graph a cell passes
-  exactly when its vertex is unfinished, so the pattern of passes in each
-  row is the previous row's with one vertex removed. The CPU guesses from
-  the recent history of outcomes, so it learns a pattern that repeats, and
-  the extra time falls to 5.0 ms. At density 0.5 the passes are a fresh
-  random half of the unfinished vertices in every row, which cannot be
+- At densities 0.9 and 1.0 the model predicts far too much. The most likely
+  reason, which was not measured directly, is that the passes are no longer
+  scattered at random. On the complete graph a cell passes exactly when its
+  vertex is unfinished, so the pattern of passes in each row is the previous
+  row's with one vertex removed. The CPU guesses from the recent history of
+  outcomes, so it most likely learns this repeating pattern, and the extra
+  time falls to 4.9 ms. At density 0.9 the pattern is mostly the same from
+  row to row, with about 10% random holes, and the extra time (41.2 ms) lies
+  between the two cases (53.9 ms predicted). At density 0.5 the passes are a
+  fresh random half of the unfinished vertices in every row, which cannot be
   learned.
 - This changes the constant, not the growth: each cell adds at most one
   wrong guess, so the worst case is still `Θ(V²)`.
@@ -220,58 +242,83 @@ Theory: `O((V + E) log V)`. `Build-Min-Heap` is `O(V)`, the `V`
 extractions are `O(log V)` each, every list entry is read once, and each of
 at most `E` decrease-keys climbs at most `log V` levels.
 
-### (i) Varying V with E = 10V
+### (i) Varying V at E = 100,000
 
-`V` from 1,000 to 1,000,000; `E/V` fixed at 10; random weights.
+`V` from 500 to 100,000; `E` fixed at 100,000, as in (a)(i); random weights.
+`V` cannot exceed `E`, because the Hamiltonian cycle needs `E ≥ V`; at
+`V = 100,000` every vertex has out-degree 1 and the graph is the cycle alone.
+The matrix of (a) would need `4V²` bytes, 40 GB at `V = 100,000`, which is
+why (a)(i) stops at 8,000 (256 MB). Up to 8,000 the two parts use graphs from
+the same seeds (the first 10 trials are the same graphs; (b) runs up to 100
+trials on these small graphs), measured in separate runs.
 
-Part (b) fixes `E/V` instead of `E` for two reasons. Over 10³ to 10⁶
-vertices no single `E` fits `V ≤ E ≤ V(V − 1)`: `V = 1,000,000` needs at
-least 1,000,000 edges, while `V = 1,000` allows at most 999,000. And with `E`
-fixed, `(V + E) log V` is not a power of `V`: `E log V` dominates for small
-`V` and `V log V` for large `V`, so the bound is not a straight line on a
-log-log plot. With `E = 10V` it is `11 V log V`, nearly a straight line of
-slope 1.10 over this range.
+| V | E / V | Time (b) | Time (a), from (a)(i) | (a) ÷ (b) | Heap comparisons | Decrease-keys |
+|---:|---:|---:|---:|---:|---:|---:|
+| 500 | 200 | 0.146 ms | 0.251 ms | 1.7 | 11,552 | 2,388 |
+| 1,000 | 100 | 0.210 ms | 0.917 ms | 4.4 | 24,245 | 4,149 |
+| 2,000 | 50 | 0.333 ms | 3.506 ms | 10.5 | 50,420 | 6,975 |
+| 3,000 | 33.3 | 0.465 ms | 7.984 ms | 17.2 | 77,239 | 9,300 |
+| 4,000 | 25 | 0.578 ms | 14.32 ms | 24.8 | 104,338 | 11,300 |
+| 5,000 | 20 | 0.703 ms | 22.49 ms | 32.0 | 131,830 | 13,092 |
+| 6,000 | 16.7 | 0.828 ms | 32.28 ms | 39.0 | 159,662 | 14,693 |
+| 7,000 | 14.3 | 0.955 ms | 43.71 ms | 45.8 | 187,536 | 16,158 |
+| 8,000 | 12.5 | 1.080 ms | 57.15 ms | 52.9 | 215,541 | 17,519 |
+| 10,000 | 10 | 1.308 ms | | | 272,206 | 19,953 |
+| 20,000 | 5 | 2.490 ms | | | 562,571 | 29,375 |
+| 50,000 | 2 | 6.060 ms | | | 1,476,574 | 53,556 |
+| 100,000 | 1 | 6.963 ms | | | 1,622,836 | 99,999 |
 
-| V | E | Time | Key comparisons ÷ `(V+E) log₂V` | Decrease-keys ÷ V | Time per key comparison |
-|---:|---:|---:|---:|---:|---:|
-| 1,000 | 10,000 | 0.106 ms | 0.278 | 1.990 | 3.5 ns |
-| 10,000 | 100,000 | 1.326 ms | 0.255 | 1.995 | 3.6 ns |
-| 100,000 | 1,000,000 | 24.74 ms | 0.240 | 1.995 | 5.6 ns |
-| 1,000,000 | 10,000,000 | 487.9 ms | 0.230 | 1.995 | 9.7 ns |
+- **Two parts of the work.** Reading and relaxing the `E` list entries costs
+  the same in every row (relaxations are exactly 100,000 in every row). The
+  heap work grows with `V`: heap comparisons are 1.9 to 2.6 times
+  `V log₂V` up to `V = 50,000`. When `V ≪ E` the list reads dominate and the
+  curve is flatter: its log-log slope is 0.52 between `V = 500` and 1,000. As
+  `V` grows the `V` extractions at `O(log V)` each take over, and the slope
+  rises to 0.86-0.97 between 4,000 and 50,000.
+- **A two-term model fits every row.** A least-squares fit (on relative
+  error) of time `= A + B · (heap comparisons)` gives `A = 0.103` ms, about
+  1.0 ns per list entry, and `B = 4.39` ns per heap comparison. It is within
+  8% of every measured time (measured ÷ fitted = 0.92-1.05). `A` is 70% of
+  the time at `V = 500` and 1.5% at `V = 100,000`. A fit of
+  `A + B · V log₂V` does worse (0.61-1.27), because the heap work per
+  vertex depends on `E/V`, as the next point shows.
+- **The last point, `V = E`, is cheap.** The time grows only 15% from
+  `V = 50,000` to 100,000. With the cycle alone, only one vertex at a time
+  has a finite key, so each extraction moves a key `∞` to the root, where
+  its children are `∞` too and `Min-Heapify` stops after two comparisons;
+  only the decrease-keys climb. Heap comparisons per vertex fall from 29.5
+  to 16.2 (`log₂ 100,000 = 16.6`).
+- **Decrease-keys** grow from 2,388 to 53,556 up to `V = 50,000`, 0.64-0.81
+  of the bound `V · H(E/V)`, and are exactly `V − 1 = 99,999` at `V = E`,
+  where every vertex has one in-edge. They are part of the heap comparisons
+  in the model.
+- **Against (a)(i).** On the same `E`, (a) takes 1.7 times as long as (b) at
+  `V = 500` and 52.9 times as long at `V = 8,000`. Over that range (a) grows
+  228-fold, close to the 256-fold growth of `V²`, and (b) 7.4-fold. The
+  decrease-key counts of the two differ slightly (17,493 in (a)(i) and
+  17,519 in (b)(i) at `V = 8,000`), because (b) averages over more trials and
+  because the two queues break ties between equal distances differently.
 
-- **The counts follow the theory.** Key comparisons (queue + relaxations)
-  divided by `(V + E) log₂V` stay between 0.23 and 0.28 over three orders of
-  magnitude. On a log-log plot the count grows with slope 1.07, against 1.10
-  for `(V + E) log V`: a little lower, because the `E` part costs no
-  `log V` when few relaxations lower a key.
-- **Decrease-keys.** 1.99-2.00 per vertex, below the bound
-  `H(10) = 2.93` per vertex derived in the theory document.
-- **The time grows faster than the counts** (slope 1.23), because each
-  operation gets slower as the graph outgrows the CPU caches. The cost per
-  key comparison is 3.4-3.6 ns up to `V = 10,000` and rises to 9.7 ns at
-  `V = 1,000,000`. This is a property of the machine, not of the algorithm.
-- The matrix of part (a) could not run here: `V = 1,000,000` would need 4 TB.
-
-![Part (b)(i), varying V](plots/part_b_vary_v.png)
+![Part (b)(i), varying V, with part (a)(i)](plots/part_b_vary_v.png)
 
 ### (ii) Varying E at V = 5,000
 
-`E` from 5,000 to 24,995,000; `V` fixed at 5,000; random weights; the same
-graphs as (a)(ii).
+`E` from 5,000 to 24,995,000; `V` fixed at 5,000; random weights; graphs
+from the same seeds as (a)(ii).
 
 | E | Density | Time | Heap comparisons | Decrease-keys | `V · H(E/V)` |
 |---:|---:|---:|---:|---:|---:|
-| 5,000 | 0.0002 | 0.224 ms | 59,557 | 4,999 | 5,000 |
-| 1,000,000 | 0.04 | 1.735 ms | 149,683 | 23,921 | 29,390 |
-| 12,500,000 | 0.5 | 12.07 ms | 143,045 | 32,910 | 42,007 |
-| 17,500,000 | 0.7 | 16.46 ms | 135,749 | 33,492 | 43,689 |
-| 24,995,000 | 1.0 | 21.40 ms | 127,519 | 34,022 | 45,472 |
+| 5,000 | 0.0002 | 0.219 ms | 59,557 | 4,999 | 5,000 |
+| 1,000,000 | 0.04 | 1.719 ms | 149,683 | 23,921 | 29,390 |
+| 12,500,000 | 0.5 | 12.09 ms | 143,045 | 32,910 | 42,007 |
+| 17,500,000 | 0.7 | 16.01 ms | 135,749 | 33,492 | 43,689 |
+| 24,995,000 | 1.0 | 22.46 ms | 127,519 | 34,022 | 45,472 |
 
-- **The time grows almost linearly in `E`,** from 0.224 to 21.40 ms. A
-  least-squares line `a + b · E` has `b = 0.86` ns per edge
-  (`a = 0.77` ms) and stays within 0.91 ms of every point.
+- **The time grows almost linearly in `E`,** from 0.219 to 22.46 ms. A
+  least-squares line `a + b · E` has `b = 0.87` ns per edge
+  (`a = 0.75` ms) and stays within 0.58 ms of every point.
 - **The heap work hardly grows.** From `E = 10,000` on, the heap comparisons
-  stay between 114,313 and 154,978 while `E` grows 2,500-fold. The
+  stay between 114,313 and 154,961 while `E` grows 2,500-fold. The
   decrease-keys stay below `V · H(E/V)`: on the complete graph only 34,022
   of the 25 million relaxations lower a key (0.14%), against the bound
   45,472. So the time is the `Θ(E)` cost of reading the lists plus a heap
@@ -282,37 +329,38 @@ graphs as (a)(ii).
 
 ### (iii) Best, average and worst case at V = 5,000
 
-The sweep of (ii) with uniform, random and worst-case weights, on the same
-graphs as (a)(iii).
+The sweep of (ii) with uniform, random and worst-case weights, on graphs
+from the same seeds as (a)(iii).
 
 | E | Density | Time, uniform | Time, random | Time, worst case | Decrease-keys, uniform | Decrease-keys, random | Decrease-keys, worst case |
 |---:|---:|---:|---:|---:|---:|---:|---:|
-| 5,000 | 0.0002 | 0.218 ms | 0.224 ms | 0.227 ms | 4,999 | 4,999 | 4,999 |
-| 1,000,000 | 0.04 | 1.042 ms | 1.735 ms | 16.79 ms | 4,999 | 23,921 | 502,410 |
-| 12,500,000 | 0.5 | 11.39 ms | 12.07 ms | 194.6 ms | 4,999 | 32,910 | 6,251,326 |
-| 17,500,000 | 0.7 | 15.42 ms | 16.46 ms | 260.9 ms | 4,999 | 33,492 | 8,750,640 |
-| 24,995,000 | 1.0 | 20.16 ms | 21.40 ms | 340.1 ms | 4,999 | 34,022 | 12,497,500 |
+| 5,000 | 0.0002 | 0.217 ms | 0.219 ms | 0.222 ms | 4,999 | 4,999 | 4,999 |
+| 1,000,000 | 0.04 | 1.125 ms | 1.719 ms | 17.24 ms | 4,999 | 23,921 | 502,410 |
+| 12,500,000 | 0.5 | 11.32 ms | 12.09 ms | 192.9 ms | 4,999 | 32,910 | 6,251,326 |
+| 17,500,000 | 0.7 | 15.32 ms | 16.01 ms | 257.6 ms | 4,999 | 33,492 | 8,750,640 |
+| 24,995,000 | 1.0 | 19.98 ms | 22.46 ms | 336.1 ms | 4,999 | 34,022 | 12,497,500 |
 
 - **At fixed `V` all three grow about linearly in `E`, at very different
   rates.** `(V + E) log V` is linear in `E` when `V` is fixed.
-  Least-squares lines over the 17 edge counts give 0.84 ns per edge
-  (uniform), 0.86 ns (random) and 14.3 ns (worst case). On the complete graph the worst case takes 15.9 times as long as
-  random weights.
+  Least-squares lines over the 17 edge counts give 0.82 ns per edge
+  (uniform), 0.87 ns (random) and 14.1 ns (worst case). On the complete
+  graph the worst case takes 15.0 times as long as random weights.
 - **Best case.** Exactly 4,999 decrease-keys at every `E`, and the fastest
   of the three at every `E`. Below `E = 1,000,000` it needs as little as
-  0.42 of the random-weight time (0.300 against 0.720 ms at
+  0.42 of the random-weight time (0.298 against 0.703 ms at
   `E = 100,000`). Besides lowering fewer keys, equal weights give many
   equal keys, and `Min-Heapify` stops at the first child whose key is not
-  smaller: at `E = 1,000,000` the uniform runs make 26,494 heap comparisons,
+  smaller: at `E = 1,000,000` the uniform runs make 26,492 heap comparisons,
   random weights 149,683. On dense graphs reading the lists dominates both:
-  20.16 against 21.40 ms on the complete graph.
-- **The one bump in the best case,** at `E = 10,000` (0.399 ms, against
-  0.218 ms at `E = 5,000` and 0.271 ms at `E = 50,000`), has the most heap
+  19.98 against 22.46 ms on the complete graph.
+- **The one bump in the best case,** at `E = 10,000` (0.397 ms, against
+  0.217 ms at `E = 5,000` and 0.270 ms at `E = 50,000`), has the most heap
   comparisons (105,303). With two edges per vertex the search spreads over
   many levels, and most extractions move a vertex with key `∞` from the
   bottom of the heap to the root, from where it sinks past every finite
-  key. With one edge per vertex there is only one finite key at a time;
-  with ten or more, most vertices soon share the same few keys.
+  key. With one edge per vertex there is only one finite key at a time (as
+  at `V = E` in (b)(i)); with ten or more, most vertices soon share the same
+  few keys.
 - **Worst case: each decrease-key climbs most of the heap.** On the complete
   graph the worst case makes 132,808,399 heap comparisons, 132,680,880 more
   than random weights for 12,463,478 more decrease-keys: 10.6 comparisons
@@ -322,11 +370,18 @@ graphs as (a)(iii).
   happens for the decrease-keys that come after the cycle edge in the
   vertex's list: about half, because lists are sorted by vertex number, not
   by position on the cycle. So each decrease-key climbs about 10.1 levels,
-  out of at most 12 (`log₂ 5,000 = 12.3`).
-- Measured time divided by the fitted `c · (V + E) log₂V` curve falls from
-  1.12 at `E = 100,000` to 0.74 on the complete graph: the time grows like
-  the `O((V + E) log V)` bound, a little more slowly than it over this
-  range.
+  out of at most 12 (`log₂ 5,000 = 12.3`). Part (c)'s complete graphs show
+  the same climb growing with `log V`: 8.39 to 11.32 comparisons per
+  decrease-key from `V = 1,000` to 8,000, `log₂V − 1.6` at every size.
+- **Against the bound.** With `c` fitted to all 17 worst-case points,
+  measured time ÷ `c · (V + E) log₂V` falls from 1.10 at `E = 100,000` to
+  0.74 on the complete graph: the time grows like the `O((V + E) log V)`
+  bound, a little more slowly than it over this range. Below
+  `E = 100,000` the curve underestimates, by up to 2.1 times at
+  `E = 10,000` (1.22 at 5,000, 1.60 at 25,000, 1.29 at 50,000). There the
+  `V` extractions dominate, and `Min-Heapify` makes up to two comparisons
+  per heap level, against one per level for a decrease-key, while the
+  formula weighs `V` and `E` the same.
 
 ![Part (b)(iii), best, average and worst case](plots/part_b_cases.png)
 
@@ -369,17 +424,19 @@ faster for the larger `V`.
 
 - **Sparse graphs: (b), by a wide margin.** At density 0.001, (b) is 18 to
   57 times faster; at `V = 8,000` it is 57 times faster with random weights
-  and 30 times with worst-case weights. On the identical `V = 5,000` graphs
-  of (a)(ii) and (b)(ii), (a) takes 99.5 times as long as (b) on a single
-  cycle (`E = V`) and 36.2 times as long at `E = 10V`. (a) reads `V²` cells
+  and 30 times with worst-case weights. Parts (a) and (b), on graphs from
+  the same seeds but measured in separate runs, agree: at `V = 5,000` with
+  random weights (a) takes 105.8 times as long as (b) on a single cycle
+  (`E = V`) and 37.6 times as long at `E = 50,000`, and at `E = 100,000` it
+  takes 52.9 times as long at `V = 8,000`. (a) reads `V²` cells
   and scans `V(V − 1)/2` queue entries whatever the graph looks like; (b)
   only touches what is there.
 - **Dense graphs where few relaxations lower a key (random weights): (b),
   by a margin that shrinks as the graph fills up.** (b) reads the `E` list
   entries, (a) all `V²` matrix cells. At density 0.5, (b) takes 0.49-0.58 of
   the time of (a); on the complete graph the two are level (0.925-1.005). The
-  same holds on the `V = 5,000` sweeps of parts (a) and (b): (a) takes 1.92
-  times as long as (b) at density 0.5 and 1.07 times on the complete graph.
+  same holds on the `V = 5,000` sweeps of parts (a) and (b): (a) takes 1.88
+  times as long as (b) at density 0.5 and 1.02 times on the complete graph.
   The `log V` factor of (b) never shows, because at density 0.5 and above at
   most 1.1% of relaxations call `decreaseKey` (1.1% at `V = 1,000`, 0.17% at
   `V = 8,000`).
@@ -391,8 +448,8 @@ faster for the larger `V`.
   `V`. While `V` grows 8-fold, the interpolated crossover falls by 27%,
   close to the 23% fall of the theoretical break-even density `1 / log V`
   (from `E ≈ V² / log V`). Parts (a)(iii) and (b)(iii) agree at
-  `V = 5,000`: with worst-case weights (b) takes 0.62 of the time of (a) at
-  density 0.04, 1.23 times as long at 0.1, and 12.2 times as long on the
+  `V = 5,000`: with worst-case weights (b) takes 0.63 of the time of (a) at
+  density 0.04, 1.24 times as long at 0.1, and 12.1 times as long on the
   complete graph.
 - **Which component matters** (`V = 8,000`, median times):
 
@@ -415,7 +472,7 @@ faster for the larger `V`.
   | `V = 8,000`, density 0.001 | 256 MB | 0.8 MB |
   | `V = 8,000`, density 0.5 | 256 MB | 256 MB |
   | `V = 8,000`, complete | 256 MB | 512 MB |
-  | `V = 1,000,000`, `E = 10⁷` | 4 TB | 120 MB |
+  | `V = 100,000`, `E = 100,000` | 40 GB | 4.8 MB |
 
   The lists use less memory below density 0.5 and twice as much as the
   matrix on a complete graph, because each edge stores its target as well as
@@ -454,7 +511,7 @@ run, so one part can be rerun without overwriting results the report
 already quotes. The committed results of parts (a) and (b) come from
 `java -Xmx6g -cp out ExperimentRunner results a` and `... results b`, which
 take about 1.5 minutes each; part (c), the longest, comes from an earlier
-`... results c`. CSV data is written to `results/` and figures to `plots/`.
+`... results c` run (2026-10-04). CSV data is written to `results/` and figures to `plots/`.
 
 ## Appendix: why the matrix scan has no if-statement
 
@@ -475,17 +532,17 @@ relaxation test, which almost always fails on random weights. The control
 
 | Density | 0.001 | 0.1 | 0.3 | 0.5 | 0.7 | 0.9 | 1.0 |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| No `if` (shipped) | 14.3 ms | 14.5 ms | 14.8 ms | 15.0 ms | 14.9 ms | 14.6 ms | 14.6 ms |
-| Separate `if` (control) | 10.1 ms | 18.8 ms | 39.1 ms | 57.1 ms | 39.4 ms | 21.0 ms | 11.9 ms |
+| No `if` (shipped) | 14.3 ms | 14.5 ms | 14.5 ms | 14.6 ms | 14.6 ms | 14.7 ms | 14.5 ms |
+| Separate `if` (control) | 10.0 ms | 18.8 ms | 38.1 ms | 55.2 ms | 39.4 ms | 21.1 ms | 11.9 ms |
 
 - Both versions make the same relaxations and decrease-keys. The control
   skips an empty cell after one test, while the shipped code computes a mask
   and compares in every cell. So where the edge test is easy to guess, the
-  control is faster: 10.1 against 14.3 ms at density 0.001.
+  control is faster: 10.0 against 14.3 ms at density 0.001.
 - At density 0.5 the control's wrong guesses make it 3.8 times slower. Its
-  curve is symmetric about 0.5 (39.1 ms at 0.3, 39.4 ms at 0.7): an edge is
-  present with probability `d` in every row, so the share of wrong guesses
-  is `min(d, 1 − d)`. Without the change, measured time would rise and fall
+  curve is nearly symmetric about 0.5 (38.1 ms at 0.3, 39.4 ms at 0.7): an
+  edge is present with probability `d` in every row, so the share of wrong
+  guesses is `min(d, 1 − d)`. Without the change, measured time would rise and fall
   with `E` for a reason that has nothing to do with the algorithm. That
   would also distort part (c), where most comparisons happen at middle
   densities.

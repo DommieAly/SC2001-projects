@@ -23,8 +23,9 @@ import java.util.SplittableRandom;
  *       Few relaxations then lower a key: at least V - 1, and on average at
  *       most about V * H(E/V), where H(k) = 1 + 1/2 + ... + 1/k.</li>
  *   <li>{@link #worstCaseGraph} keeps the same edges and picks weights that make
- *       every relaxation of an edge to a later vertex on the cycle (about half
- *       of all edges) lower a key below every other key except possibly the
+ *       every relaxation of an edge to a later vertex on the cycle (on average
+ *       (V - 1)(E + V) / 2V of them, about E/2 when E is much larger than V)
+ *       lower a key below every other key except possibly the
  *       next cycle vertex's, so each such decreaseKey in the heap climbs to
  *       the root or to one level below it. This is the input behind the
  *       O(E log V) term of part (b).</li>
