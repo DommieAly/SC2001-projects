@@ -111,10 +111,7 @@ def relative_linear_fit(x_values, y_values):
 
 
 def harmonic(x):
-    """H(x) = digamma(x + 1) + Euler's gamma, which equals 1 + 1/2 + ... + 1/x for whole x.
-
-    E/V is not always a whole number in the fixed-E sweeps, so the sum alone would round it.
-    """
+    """H(x) = digamma(x + 1) + Euler's gamma, which equals 1 + 1/2 + ... + 1/x for whole x."""
     shift = 0.0
     z = x + 1.0
     while z < 8.0:
@@ -211,7 +208,7 @@ def plot_part_a_vary_v(results_directory, output_directory):
     scale = log_scale_fit(times, [n * n for n in v])
     time_axis.plot(
         v, [scale * n * n for n in v], linestyle=":", color=REFERENCE_COLOUR,
-        linewidth=1.5, label="fitted c·V²")
+        linewidth=1.5, label=f"fitted c·V², c = {scale * 1e6:.2f} ns")
     time_axis.plot(
         v, times, marker="o", color=ALGORITHM_COLOURS["Matrix + array (a)"], linewidth=2,
         label=f"measured, E = {edge_count:,}")
@@ -354,14 +351,31 @@ def plot_part_a_branch_control(results_directory, output_directory):
     plt.close(figure)
 
 
+def per_edge_cost_ms(results_directory):
+    """Slope b of the least-squares line a + b·E through (b)(ii), in ms per edge, or None."""
+    vary_e_file = results_directory / "part_b_vary_e.csv"
+    if not vary_e_file.exists():
+        return None
+    rows = rows_where(read_csv(vary_e_file), weights="random")
+    return linear_fit(column(rows, "e"), column(rows, "median_cpu_time_ms"))[1]
+
+
 def plot_part_b_vary_v(results_directory, output_directory):
     """(b)(i), with (a)(i) on the same axes: both use the same E and the same seeds."""
     rows = rows_where(read_csv(results_directory / "part_b_vary_v.csv"), weights="random")
     edge_count = int(rows[0]["e"])
     v = column(rows, "v")
     times = column(rows, "median_cpu_time_ms")
-    heap_comparisons = column(rows, "mean_queue_comparisons")
-    figure, (time_axis, count_axis) = plt.subplots(1, 2, figsize=(15, 6))
+    v_log_v = [n * math.log2(n) for n in v]
+    colour = ALGORITHM_COLOURS["Lists + heap (b)"]
+    figure, (time_axis, line_axis) = plt.subplots(1, 2, figsize=(14, 5.5))
+
+    # time = C + c·V·log2(V): C is the fixed cost of reading the E list entries.
+    edge_time, heap_time = relative_linear_fit(v_log_v, times)
+    fitted = [edge_time + heap_time * x for x in v_log_v]
+    worst_error = max(abs(t / f - 1) for t, f in zip(times, fitted))
+    fit_label = (f"(b): fitted C + c·V·log₂V\n"
+                 f"C = {edge_time:.2f} ms, c = {heap_time * 1e6:.1f} ns")
     all_times = list(times)
 
     matrix_file = results_directory / "part_a_vary_v.csv"
@@ -373,55 +387,57 @@ def plot_part_b_vary_v(results_directory, output_directory):
         scale = log_scale_fit(matrix_times, [n * n for n in matrix_v])
         time_axis.plot(
             matrix_v, [scale * n * n for n in matrix_v], linestyle=":", color=REFERENCE_COLOUR,
-            linewidth=1.5, label="(a): fitted c·V²")
+            linewidth=1.5, label=f"(a): fitted c·V², c = {scale * 1e6:.2f} ns")
         time_axis.plot(
             matrix_v, matrix_times, marker="s", color=ALGORITHM_COLOURS["Matrix + array (a)"],
             linewidth=2, label="(a) matrix + array, from part (a)(i)")
-    intercept, slope = relative_linear_fit(heap_comparisons, times)
     time_axis.plot(
-        v, [intercept + slope * h for h in heap_comparisons], linestyle="--",
-        color=REFERENCE_COLOUR, linewidth=1.5,
-        label=(f"(b): A + B·(measured heap comparisons), least squares\n"
-               f"on relative error: A = {intercept:.2f} ms, B = {slope * 1e6:.1f} ns"))
-    time_axis.plot(
-        v, times, marker="o", color=ALGORITHM_COLOURS["Lists + heap (b)"], linewidth=2,
-        label="(b) lists + heap")
-
-    count_axis.plot(
-        v, [n * math.log2(n) for n in v], linestyle=":", color=REFERENCE_COLOUR,
-        linewidth=1.5, label="V·log₂V")
-    count_axis.plot(
-        v, heap_comparisons, marker="^", color=SERIES_COLOURS[3], linewidth=2,
-        label="heap comparisons")
-    count_axis.plot(
-        v, column(rows, "mean_relaxations"), marker="s", color=SERIES_COLOURS[0],
-        linewidth=2, label=f"relaxations = E = {edge_count:,}")
-    count_axis.plot(
-        v, [n * harmonic(edge_count / n) for n in v], linestyle="-.", color=REFERENCE_COLOUR,
-        linewidth=1.5, label="V·H(E/V): bound on mean decrease-keys")
-    count_axis.plot(
-        v, column(rows, "mean_decrease_keys"), marker="o", color=SERIES_COLOURS[2],
-        linewidth=2, label="decrease-keys")
-
-    for axis in (time_axis, count_axis):
-        axis.set_xscale("log")
-        axis.set_yscale("log")
-        label_vertex_axis(axis, v)
-        axis.set_xlabel("Number of vertices V (log scale)")
-        style_axis(axis)
-    # Room above the data for the legend.
-    time_axis.set_ylim(0.8 * min(all_times), 12 * max(all_times))
+        v, fitted, linestyle="--", color=REFERENCE_COLOUR, linewidth=1.5, label=fit_label)
+    time_axis.plot(v, times, marker="o", color=colour, linewidth=2, label="(b) lists + heap")
+    time_axis.set_xscale("log")
+    time_axis.set_yscale("log")
+    label_vertex_axis(time_axis, v)
+    time_axis.set_xlabel("Number of vertices V (log scale)")
+    time_axis.set_ylim(0.6 * min(all_times), 1.6 * max(all_times))
     time_axis.set_ylabel("Median CPU time (ms, log scale)")
-    time_axis.set_title(f"Same E = {edge_count:,}: (a) grows as V², (b) far more slowly")
+    time_axis.set_title(f"Same E = {edge_count:,}: (a) grows as V², (b) fits C + c·V·log₂V")
     time_axis.legend(fontsize=8, loc="upper left")
-    count_axis.set_ylabel("Operations per run (log scale), part (b)")
-    per_v_log_v = [
-        comparisons / (n * math.log2(n))
-        for comparisons, n in zip(heap_comparisons, v) if n < edge_count]
-    count_axis.set_title(
-        f"(b): heap comparisons {min(per_v_log_v):.1f}–{max(per_v_log_v):.1f} × V·log₂V "
-        "for V < E; relaxations stay at E")
-    count_axis.legend(fontsize=8, loc="upper left")
+
+    # The fitted line starts at x = 0, so its intercept C meets the E × per-edge reference.
+    line_x = [0.0] + v_log_v
+    line_fit = [edge_time + heap_time * x for x in line_x]
+    per_edge = per_edge_cost_ms(results_directory)
+    # Points below V = 20,000 crowd the left edge, so an inset shows them and the intercept.
+    zoom_limit = 0.25e6
+    zoom_axis = line_axis.inset_axes([0.58, 0.08, 0.38, 0.38])
+    for axis in (line_axis, zoom_axis):
+        axis.plot(line_x, line_fit, linestyle="--", color=REFERENCE_COLOUR, linewidth=1.5,
+                  label=fit_label)
+        axis.plot(v_log_v, times, marker="o", color=colour, linewidth=2, label="(b) lists + heap")
+        if per_edge is not None:
+            axis.axhline(
+                edge_count * per_edge, color="black", linestyle=":", linewidth=1.2,
+                label=(f"E × {per_edge * 1e6:.2f} ns per edge from (b)(ii) "
+                       f"= {edge_count * per_edge:.2f} ms"))
+        axis.xaxis.set_major_formatter(FuncFormatter(lambda x, _: f"{x / 1e6:g}"))
+    line_axis.set_xlim(left=0)
+    zero_based_ylim(line_axis, times + fitted)
+    zoomed = [t for x, t in zip(v_log_v, times) if x <= zoom_limit]
+    zoom_axis.set_xlim(0, zoom_limit)
+    zoom_axis.set_ylim(0, 1.15 * max(zoomed))
+    zoom_axis.tick_params(labelsize=7)
+    zoom_axis.set_title("V ≤ 16,000 and the intercept", fontsize=8)
+    zoom_axis.grid(True, alpha=0.3)
+    indicator = line_axis.indicate_inset_zoom(zoom_axis, edgecolor="grey")
+    for connector in getattr(indicator, "connectors", None) or indicator[1]:
+        connector.set_visible(False)
+    line_axis.set_xlabel("V·log₂V (millions)")
+    line_axis.set_ylabel("Median CPU time (ms)")
+    line_axis.set_title(
+        f"(b) against V·log₂V: every point within {worst_error:.1%} of C + c·V·log₂V")
+    line_axis.legend(fontsize=8, loc="upper left")
+    for axis in (time_axis, line_axis):
+        style_axis(axis)
 
     figure.suptitle(
         f"Part (b)(i): adjacency lists + min-heap, varying V at E = {edge_count:,} "

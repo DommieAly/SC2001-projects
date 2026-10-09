@@ -182,7 +182,9 @@ Adding the rows of the table:
 T_a(V, E) = Θ(V) + Θ(V²) + Θ(V²) + Θ(E) + O(E) = Θ(V² + E) = Θ(V²),   because E ≤ V(V − 1).
 ```
 
-- **With respect to `V`:** quadratic.
+- **With respect to `V`:** quadratic. At a fixed `E`, doubling `V`
+  multiplies the `V²` cells read and the `V(V − 1)/2` comparisons by 4, so
+  it multiplies the time by about 4 (README, part (a)(i)).
 - **With respect to `E`:** `E` only enters through the relaxations and
   `Decrease-Key` calls, at `O(1)` each. That work is never larger than the
   `V²` cells already read.
@@ -228,7 +230,13 @@ T_b(V, E) = O(V) + O(V log V) + Θ(V + E) + Θ(E) + O(E log V) = O((V + E) log V
 When every vertex is reachable from the source, `E ≥ V − 1` and this is the
 familiar `O(E log V)`.
 
-- **With respect to `V`:** `V log V` from the extractions.
+- **With respect to `V`:** `V log V` from the extractions. At a fixed `E`
+  with random weights, reading the `E` list entries costs the same at every
+  `V`, and only about `V · H(E/V)` relaxations lower a key, so the time is
+  approximately `C + c · V log V`, where `C` is the cost of reading the
+  edges (README, part (b)(i)). The decrease-key term grows a little more
+  slowly than `V log V` as `E/V` falls; with worst-case weights the
+  `E log V` term would also grow with `V`.
 - **With respect to `E`:** `E` from reading the lists, plus up to `E log V`
   from the `Decrease-Key` calls.
 - **Reachability:** after the `O(V)` `Build-Min-Heap`, only reachable

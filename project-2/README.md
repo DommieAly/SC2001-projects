@@ -70,7 +70,7 @@ because that vertex's distance is already the smallest.
     `CorrectnessCheck` confirms that the decrease-key count equals the
     number of forward edges.
 - **One change at a time.** Parts (a) and (b) each run three experiments:
-  - **(i) vary `V`** with `E` fixed at 100,000, random weights;
+  - **(i) vary `V`** with `E` fixed at 1,000,000, random weights;
   - **(ii) vary `E`** at `V = 5,000`, random weights, over 17 edge counts
     from a single cycle (`E = V`) to the complete graph;
   - **(iii) best, average and worst case:** the sweep of (ii) with all three
@@ -81,9 +81,11 @@ because that vertex's distance is already the smallest.
 - **Seeds.** The base seed is `20261004`. A given `(V, E, trial)` always
   produces the same edges, in every part and in every weighting. Parts (a)
   and (b) therefore run on graphs from the same seeds wherever their
-  configurations meet: in (i) up to `V = 8,000`, and in (ii) and (iii). The
-  first 10 trials are the same graphs; (b) runs extra trials on small graphs,
-  and the two parts are measured in separate runs. With random integer
+  configurations meet: in (i) up to `V = 16,000`, and in (ii) and (iii). The
+  first 10 trials are the same graphs; (b) runs extra trials on small graphs.
+  The two parts are measured separately, not paired per graph as in part
+  (c): (i) one after the other in one run, (ii) and (iii) in separate runs.
+  With random integer
   weights equal distances occur, and the array queue and the heap break ties
   differently, so random-weight decrease-key counts differ slightly between
   (a) and (b) even on the same graph: at density 0.5 the same 10 graphs give
@@ -97,7 +99,9 @@ because that vertex's distance is already the smallest.
   generation, building the matrix, and verification are not timed. Medians
   are reported. The JVM is warmed up on every implementation first. All runs
   were on an Apple M2 Pro with Java 23 and `-Xmx6g`. Parts (a) and (b) were
-  measured on 2026-10-09 on AC power with macOS Low Power Mode off. Part (c)
+  measured on 2026-10-09 on AC power with macOS Low Power Mode off;
+  sub-experiment (i) of both was rerun later that day with `E = 1,000,000`,
+  on battery power with Low Power Mode off. Part (c)
   comes from an earlier run (2026-10-04) of the same implementations and
   part (c) code; its measurements were not repeated.
 - **Counts.** Machine-independent counts are recorded next to the time:
@@ -117,30 +121,33 @@ whole matrix row (`V²` cells in total). The `E` relaxations and the
 decrease-keys cost `O(1)` each, and `E ≤ V(V − 1)`. So best, average and
 worst case are all `Θ(V²)`.
 
-### (i) Varying V at E = 100,000
+### (i) Varying V at E = 1,000,000
 
-`V` from 500 to 8,000; `E` fixed at 100,000; random weights. 100,000 edges
-fit every `V`: at least `V` for the Hamiltonian cycle, and at most
-`V(V − 1) = 249,500` at `V = 500`. Only `V` changes, so the density falls
-from 0.40 to 0.0016.
+`V` from 2,000 to 16,000; `E` fixed at 1,000,000; random weights. One million
+edges fit every `V`: at least `V` for the Hamiltonian cycle, and at most
+`V(V − 1) = 3,998,000` at `V = 2,000`. Only `V` changes, so the density falls
+from 0.25 to 0.0039.
 
-| V | Density | Time | Time ÷ V² | Decrease-keys |
-|---:|---:|---:|---:|---:|
-| 500 | 0.40 | 0.251 ms | 1.00 ns | 2,385 |
-| 1,000 | 0.10 | 0.917 ms | 0.92 ns | 4,148 |
-| 2,000 | 0.025 | 3.506 ms | 0.88 ns | 6,964 |
-| 4,000 | 0.0063 | 14.32 ms | 0.90 ns | 11,321 |
-| 8,000 | 0.0016 | 57.15 ms | 0.89 ns | 17,493 |
+| V | Density | Time | Trials | Time ÷ V² | Decrease-keys |
+|---:|---:|---:|---:|---:|---:|
+| 2,000 | 0.25 | 3.859 ms | 26 | 0.96 ns | 11,168 |
+| 3,000 | 0.11 | 8.568 ms | 12 | 0.95 ns | 15,671 |
+| 4,000 | 0.063 | 14.90 ms | 10 | 0.93 ns | 19,890 |
+| 6,000 | 0.028 | 33.27 ms | 10 | 0.92 ns | 27,711 |
+| 8,000 | 0.016 | 58.87 ms | 10 | 0.92 ns | 34,815 |
+| 12,000 | 0.0069 | 133.1 ms | 10 | 0.92 ns | 47,728 |
+| 16,000 | 0.0039 | 234.4 ms | 10 | 0.92 ns | 59,241 |
 
-- The time grows with slope 1.97 on a log-log plot (least squares over all
-  nine `V`; 1.99 without `V = 500`), against 2 for `V²`. Time divided by the
-  `V²` cells read stays between 0.88 and 1.00 ns, which includes the
-  `V(V − 1)/2` queue comparisons.
-- In every row, cells read is exactly `V²`, queue comparisons exactly
-  `V(V − 1)/2`, and relaxations exactly `E = 100,000`. The decrease-keys
-  grow with `V`, from 2,385 to 17,493 (about 0.7-0.8 of `V · H(E/V)`), but each
-  costs `O(1)` and they are at most 1% of the `V²` cells read (0.95% at
-  `V = 500`, 0.03% at `V = 8,000`). So the growth comes from `V`.
+- **Each doubling of `V` multiplies the time by about 4:** 3.86 (2,000 to
+  4,000), 3.88, 3.95, 4.00 and 3.98 (8,000 to 16,000). A fitted `c · V²`
+  with `c = 0.93` ns is within 3.4% of every point (+3.4% at `V = 2,000`,
+  −1.8% to +2.0% elsewhere).
+- **The reason is the cells read.** In every row, cells read is exactly
+  `V²`, queue comparisons exactly `V(V − 1)/2`, and relaxations exactly
+  `E = 1,000,000`. Time divided by the `V²` cells read stays between 0.92
+  and 0.96 ns, which includes the queue comparisons. The decrease-keys grow
+  with `V` (0.78-0.82 of `V · H(E/V)`), but each costs `O(1)` and they are
+  at most 0.28% of the `V²` cells read.
 
 ![Part (a)(i), varying V](plots/part_a_vary_v.png)
 
@@ -243,63 +250,62 @@ Theory: `O((V + E) log V)`. `Build-Min-Heap` is `O(V)`, the `V`
 extractions are `O(log V)` each, every list entry is read once, and each of
 at most `E` decrease-keys climbs at most `log V` levels.
 
-### (i) Varying V at E = 100,000
+### (i) Varying V at E = 1,000,000
 
-`V` from 500 to 100,000; `E` fixed at 100,000, as in (a)(i); random weights.
-`V` cannot exceed `E`, because the Hamiltonian cycle needs `E ≥ V`; at
-`V = 100,000` every vertex has out-degree 1 and the graph is the cycle alone.
-The matrix of (a) needs `4V²` bytes, 40 GB at `V = 100,000`, so (a) cannot
-follow (b) up to `V = E`; (a)(i) stops at 8,000 (256 MB, also the largest `V`
-of part (c)) to keep the run short. Up to 8,000 the two parts use graphs from
-the same seeds (the first 10 trials are the same graphs; (b) runs up to 100
-trials on these small graphs), measured in separate runs.
+`V` from 2,000 to 100,000; `E` fixed at 1,000,000, as in (a)(i); random
+weights. Every vertex has at least `E/V = 10` out-edges. The matrix of (a)
+needs `4V²` bytes, 1 GB at `V = 16,000` and 40 GB at `V = 100,000`, so (a)(i)
+stops at 16,000. Up to 16,000 the two parts use graphs from the same seeds
+(the first 10 trials are the same graphs), measured one after the other in
+one run.
 
-| V | E / V | Time (b) | Time (a), from (a)(i) | (a) ÷ (b) | Heap comparisons | Decrease-keys |
-|---:|---:|---:|---:|---:|---:|---:|
-| 500 | 200 | 0.146 ms | 0.251 ms | 1.7 | 11,552 | 2,388 |
-| 1,000 | 100 | 0.210 ms | 0.917 ms | 4.4 | 24,245 | 4,149 |
-| 2,000 | 50 | 0.333 ms | 3.506 ms | 10.5 | 50,420 | 6,975 |
-| 3,000 | 33.3 | 0.465 ms | 7.984 ms | 17.2 | 77,239 | 9,300 |
-| 4,000 | 25 | 0.578 ms | 14.32 ms | 24.8 | 104,338 | 11,300 |
-| 5,000 | 20 | 0.703 ms | 22.49 ms | 32.0 | 131,830 | 13,092 |
-| 6,000 | 16.7 | 0.828 ms | 32.28 ms | 39.0 | 159,662 | 14,693 |
-| 7,000 | 14.3 | 0.955 ms | 43.71 ms | 45.8 | 187,536 | 16,158 |
-| 8,000 | 12.5 | 1.080 ms | 57.15 ms | 52.9 | 215,541 | 17,519 |
-| 10,000 | 10 | 1.308 ms | | | 272,206 | 19,953 |
-| 20,000 | 5 | 2.490 ms | | | 562,571 | 29,375 |
-| 50,000 | 2 | 6.060 ms | | | 1,476,574 | 53,556 |
-| 100,000 | 1 | 6.963 ms | | | 1,622,836 | 99,999 |
+**Model.** `E` is fixed, so every run reads the same 1,000,000 list entries
+and makes the same 1,000,000 relaxations: a constant cost `C` at every `V`.
+The heap work (`V` extractions at `O(log V)` each, plus the decrease-keys)
+grows roughly like `V log V`. So
 
-- **Two parts of the work.** Reading and relaxing the `E` list entries costs
-  the same in every row (relaxations are exactly 100,000 in every row). The
-  heap work grows with `V`: heap comparisons are 1.9 to 2.6 times
-  `V log₂V` up to `V = 50,000`. When `V ≪ E` the list reads dominate and the
-  curve is flatter: its log-log slope is 0.52 between `V = 500` and 1,000. As
-  `V` grows the `V` extractions at `O(log V)` each take over, and the slope
-  rises to 0.86-0.97 between 4,000 and 50,000.
-- **A two-term model fits every row.** A least-squares fit (on relative
-  error) of time `= A + B · (heap comparisons)` gives `A = 0.103` ms, about
-  1.0 ns per list entry, and `B = 4.39` ns per heap comparison. It is within
-  8% of every measured time (measured ÷ fitted = 0.92-1.05). `A` is 70% of
-  the time at `V = 500` and 1.5% at `V = 100,000`. A fit of
-  `A + B · V log₂V` does worse (0.61-1.27), because the heap work per
-  vertex depends on `E/V`, as the next point shows.
-- **The last point, `V = E`, is cheap.** The time grows only 15% from
-  `V = 50,000` to 100,000. With the cycle alone, only one vertex at a time
-  has a finite key, so each extraction moves a key `∞` to the root, where
-  its children are `∞` too and `Min-Heapify` stops after two comparisons;
-  only the decrease-keys climb. Heap comparisons per vertex fall from 29.5
-  to 16.2 (`log₂ 100,000 = 16.6`).
-- **Decrease-keys** grow from 2,388 to 53,556 up to `V = 50,000`, 0.64-0.81
-  of the bound `V · H(E/V)`, and are exactly `V − 1 = 99,999` at `V = E`,
-  where every vertex has one in-edge. They are part of the heap comparisons
-  in the model.
-- **Against (a)(i).** On the same `E`, (a) takes 1.7 times as long as (b) at
-  `V = 500` and 52.9 times as long at `V = 8,000`. Over that range (a) grows
-  228-fold, close to the 256-fold growth of `V²`, and (b) 7.4-fold. The
-  decrease-key counts of the two differ slightly (17,493 in (a)(i) and
-  17,519 in (b)(i) at `V = 8,000`), because (b) averages over more trials and
-  because the two queues break ties between equal distances differently.
+```text
+time(V) ≈ C + c · V log₂V.
+```
+
+A least-squares fit on relative error over all ten points gives
+`C = 0.87` ms and `c = 15.8` ns.
+
+| V | E / V | Time (b) | Trials | Fit `C + c · V log₂V` | Error | Time (a), from (a)(i) | (a) ÷ (b) |
+|---:|---:|---:|---:|---:|---:|---:|---:|
+| 2,000 | 500 | 1.218 ms | 81 | 1.219 ms | −0.1% | 3.859 ms | 3.2 |
+| 3,000 | 333 | 1.416 ms | 71 | 1.421 ms | −0.3% | 8.568 ms | 6.1 |
+| 4,000 | 250 | 1.635 ms | 61 | 1.630 ms | +0.3% | 14.90 ms | 9.1 |
+| 6,000 | 167 | 2.019 ms | 49 | 2.064 ms | −2.2% | 33.27 ms | 16.5 |
+| 8,000 | 125 | 2.508 ms | 40 | 2.514 ms | −0.2% | 58.87 ms | 23.5 |
+| 12,000 | 83 | 3.428 ms | 30 | 3.446 ms | −0.5% | 133.1 ms | 38.8 |
+| 16,000 | 62.5 | 4.622 ms | 23 | 4.409 ms | +4.8% | 234.4 ms | 50.7 |
+| 25,000 | 40 | 6.980 ms | 15 | 6.653 ms | +4.9% | | |
+| 50,000 | 20 | 13.31 ms | 10 | 13.23 ms | +0.6% | | |
+| 100,000 | 10 | 25.64 ms | 10 | 27.16 ms | −5.6% | | |
+
+- **The fit matches every point within 5.6%** while the time grows 21-fold.
+  The largest error, −5.6% at `V = 100,000`, is not noise: with fewer edges
+  per vertex, fewer keys are lowered (5.6 decrease-keys per vertex at
+  `V = 2,000`, 2.0 at 100,000), so the heap comparisons fall from 2.58 to
+  2.04 × `V log₂V`. The heap work is close to, not exactly, `V log V`.
+- **`C` is the time to read the edges.** In (b)(ii) each extra edge costs
+  about 0.87 ns, so reading `E = 1,000,000` edges should take about 0.87 ms;
+  the fitted `C` is 0.87 ms (±0.03 ms). (i) and (ii) come from separate
+  runs, which differ by 6-7% on the one configuration they share
+  (`V = 5,000`, `E = 1,000,000`), so the two agree to within a few percent,
+  not more. `C` is 72% of the time at `V = 2,000` and 3% at `V = 100,000`.
+  Without `C`, a `c · V log₂V` fitted through the geometric mean (as for
+  (a)'s `c · V²`) is off by +119% at `V = 2,000` and −39% at
+  `V = 100,000`.
+- **Why `V log V` and not `V`.** Over this range `log₂V` grows only 1.5-fold
+  (11.0 to 16.6), so the times alone barely separate the two: `C + c · V`
+  also fits within 5.5%. What decides is `C`. With `V log V` the fitted `C`
+  matches the edge-reading cost measured independently in (b)(ii); with `V`
+  it would have to be 0.67 ms, 24% less.
+- **Against (a)(i).** On the same `E`, (a) takes 3.2 times as long as (b)
+  at `V = 2,000` and 50.7 times as long at `V = 16,000`. Over that 8-fold
+  range of `V`, (a) grows 60.8-fold (`V²`: 64-fold) and (b) 3.8-fold.
 
 ![Part (b)(i), varying V, with part (a)(i)](plots/part_b_vary_v.png)
 
@@ -360,9 +366,8 @@ from the same seeds as (a)(iii).
   comparisons (105,303). With two edges per vertex the search spreads over
   many levels, and most extractions move a vertex with key `∞` from the
   bottom of the heap to the root, from where it sinks past every finite
-  key. With one edge per vertex there is only one finite key at a time (as
-  at `V = E` in (b)(i)); with ten or more, most vertices soon share the same
-  few keys.
+  key. With one edge per vertex there is only one finite key at a time;
+  with ten or more, most vertices soon share the same few keys.
 - **Worst case: each decrease-key climbs most of the heap.** On the complete
   graph the worst case makes 132,808,399 heap comparisons, 132,680,880 more
   than random weights for 12,463,478 more decrease-keys: 10.6 comparisons
@@ -427,10 +432,10 @@ faster for the larger `V`.
 - **Sparse graphs: (b), by a wide margin.** At density 0.001, (b) is 18 to
   57 times faster; at `V = 8,000` it is 57 times faster with random weights
   and 30 times with worst-case weights. Parts (a) and (b), on graphs from
-  the same seeds but measured in separate runs, agree: at `V = 5,000` with
+  the same seeds but not paired per graph as in part (c), agree: at `V = 5,000` with
   random weights (a) takes 105.8 times as long as (b) on a single cycle
-  (`E = V`) and 37.6 times as long at `E = 50,000`, and at `E = 100,000` it
-  takes 52.9 times as long at `V = 8,000`. (a) reads `V²` cells
+  (`E = V`) and 37.6 times as long at `E = 50,000`, and at `E = 1,000,000`
+  it takes 50.7 times as long at `V = 16,000`. (a) reads `V²` cells
   and scans `V(V − 1)/2` queue entries whatever the graph looks like; (b)
   only touches what is there.
 - **Dense graphs where few relaxations lower a key (random weights): (b),
@@ -474,7 +479,7 @@ faster for the larger `V`.
   | `V = 8,000`, density 0.001 | 256 MB | 0.8 MB |
   | `V = 8,000`, density 0.5 | 256 MB | 256 MB |
   | `V = 8,000`, complete | 256 MB | 512 MB |
-  | `V = 100,000`, `E = 100,000` | 40 GB | 4.8 MB |
+  | `V = 100,000`, `E = 1,000,000` (largest graph of (b)(i)) | 40 GB | 12 MB |
 
   The lists use less memory below density 0.5 and twice as much as the
   matrix on a complete graph, because each edge stores its target as well as
@@ -509,11 +514,16 @@ python3 python/plot_results.py results
 ```
 
 `ExperimentRunner` takes an optional second argument naming the parts to
-run, so one part can be rerun without overwriting results the report
-already quotes. The committed results of parts (a) and (b) come from
-`java -Xmx6g -cp out ExperimentRunner results a` and `... results b`, which
-take about 1.5 minutes each; part (c), the longest, comes from an earlier
-`... results c` run (2026-10-04). CSV data is written to `results/` and figures to `plots/`.
+run (`a`, `b`, `c`, `a.i`, `b.i`, comma separated), so one part can be rerun
+without overwriting results the report already quotes. `a.i` and `b.i` run
+only sub-experiment (i) of that part and write only `part_a_vary_v.csv` or
+`part_b_vary_v.csv`. The committed results of (ii), (iii) and the branch
+control come from `java -Xmx6g -cp out ExperimentRunner results a` and
+`... results b`, which took about 1.5 minutes each; the committed results of
+(i) come from `... results a.i,b.i`, which takes under a minute (run with
+`-Xmx6g` like the other parts; the matrix at `V = 16,000` is 1 GB). Part (c), the longest, comes from
+an earlier `... results c` run (2026-10-04). CSV data is written to
+`results/` and figures to `plots/`.
 
 ## Appendix: why the matrix scan has no if-statement
 

@@ -48,28 +48,28 @@ public class ExperimentRunner {
     /**
      * Parts (a) and (b) vary |V| with this many edges, so that only |V|
      * changes. It must lie between V, for the Hamiltonian cycle, and V(V-1)
-     * for every V varied: at V = 500 a complete graph has 249,500 edges.
+     * for every V varied: at V = 2,000 a complete graph has 3,998,000 edges,
+     * so the density is 0.25 there.
      */
-    private static final long FIXED_EDGE_COUNT = 100_000;
+    private static final long FIXED_EDGE_COUNT = 1_000_000;
 
     /**
-     * The matrix needs 4V^2 bytes (256 MB at V = 8,000), so part (a) stays in
-     * the thousands to keep the run short. V = 100,000 would need 40 GB for
-     * the matrix.
+     * The matrix needs 4V^2 bytes, 1.0 GB at V = 16,000, which still fits in
+     * a 6 GB heap. V = 100,000 would need 40 GB for the matrix.
      */
     private static final int[] PART_A_VERTEX_COUNTS = {
-        500, 1_000, 2_000, 3_000, 4_000, 5_000, 6_000, 7_000, 8_000
+        2_000, 3_000, 4_000, 6_000, 8_000, 12_000, 16_000
     };
 
     /**
      * The lists need only Theta(V + E) memory, so part (b) continues past part
-     * (a) up to V = E, where the graph is the Hamiltonian cycle alone. Up to
-     * 8,000 the values are those of part (a), so the first trials of each
-     * share their graphs.
+     * (a) up to V = 100,000, where E/V = 10: every vertex still has about ten
+     * out-edges, not just its cycle edge. Up to 16,000 the values are those of
+     * part (a), so the first trials of each share their graphs.
      */
     private static final int[] PART_B_VERTEX_COUNTS = {
-        500, 1_000, 2_000, 3_000, 4_000, 5_000, 6_000, 7_000, 8_000,
-        10_000, 20_000, 50_000, 100_000
+        2_000, 3_000, 4_000, 6_000, 8_000, 12_000, 16_000,
+        25_000, 50_000, 100_000
     };
 
     /** The branch control of part (a) compares two ways of writing the edge test at this |V|. */
@@ -171,9 +171,11 @@ public class ExperimentRunner {
 
     /**
      * Usage: {@code ExperimentRunner [outputDirectory] [parts]}, where parts is
-     * a comma separated subset of {@code a,b,c}. Every part is run when it is
-     * omitted. Selecting one part avoids rewriting results that a report
-     * already quotes.
+     * a comma separated subset of {@code a,b,c,a.i,b.i}. Every part is run
+     * when it is omitted. Selecting one part avoids rewriting results that a
+     * report already quotes: {@code a.i} and {@code b.i} run only
+     * sub-experiment (i) of part (a) or (b), varying |V| at a fixed |E|, and
+     * write only {@code part_a_vary_v.csv} or {@code part_b_vary_v.csv}.
      */
     public static void main(String[] args) throws IOException {
         Path outputDirectory = args.length == 0
@@ -191,11 +193,21 @@ public class ExperimentRunner {
                     outputDirectory.resolve("part_a_vary_v.csv"),
                     outputDirectory.resolve("part_a_vary_e.csv"),
                     outputDirectory.resolve("part_a_branch_control.csv"));
+        } else if (parts.contains("a.i")) {
+            System.out.println("Running Part (a)(i): adjacency matrix + array queue, varying V...");
+            writeFixedESweep(
+                    outputDirectory.resolve("part_a_vary_v.csv"),
+                    Variant.MATRIX_ARRAY, PART_A_VERTEX_COUNTS);
         }
         if (parts.contains("b")) {
             runPartB(
                     outputDirectory.resolve("part_b_vary_v.csv"),
                     outputDirectory.resolve("part_b_vary_e.csv"));
+        } else if (parts.contains("b.i")) {
+            System.out.println("Running Part (b)(i): adjacency lists + min-heap, varying V...");
+            writeFixedESweep(
+                    outputDirectory.resolve("part_b_vary_v.csv"),
+                    Variant.LIST_HEAP, PART_B_VERTEX_COUNTS);
         }
         if (parts.contains("c")) {
             runPartC(
