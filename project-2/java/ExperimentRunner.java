@@ -34,21 +34,35 @@ public class ExperimentRunner {
     private static final int MAXIMUM_TRIALS = 100;
     private static final long MINIMUM_MEASURED_NS = 100_000_000L;
 
-    /** Parts (a) and (b) vary |E| at this |V|, from a single cycle to a complete graph. */
+    /**
+     * Parts (a) and (b) vary |E| at this |V|, from a single cycle to a complete
+     * graph, with every weighting: uniform (best case), random (average case)
+     * and worst case.
+     */
     private static final int FIXED_VERTEX_COUNT = 5_000;
     private static final int[] FIXED_V_OUT_DEGREES = {
         1, 2, 5, 10, 20, 50, 100, 200, 500, 1_000, 2_000,
         2_500, 3_000, 3_500, 4_000, 4_500, 4_999
     };
 
-    /** Parts (a) and (b) vary |V| with this many edges per vertex. */
+    /**
+     * Part (a) varies |V| with this many edges, so that only |V| changes. It
+     * must lie between V, for the Hamiltonian cycle, and V(V-1) for every V
+     * of PART_A_VERTEX_COUNTS: at V = 500 a complete graph has 249,500 edges.
+     */
+    private static final long PART_A_FIXED_EDGE_COUNT = 100_000;
+
+    /**
+     * Part (b) varies |V| with this many edges per vertex. No single |E| lies
+     * between V and V(V-1) for every V from 10^3 to 10^6, so part (b) fixes
+     * E/V instead.
+     */
     private static final int SPARSE_OUT_DEGREE = 10;
 
     /**
-     * The matrix needs 4V^2 bytes (256 MB at V = 8,000) and the complete
-     * family's lists about 8V^2 more, so part (a) stays in the thousands to
-     * keep the run short. The 10^5 to 10^6 vertices of part (b) would need
-     * 40 GB to 4 TB for the matrix.
+     * The matrix needs 4V^2 bytes (256 MB at V = 8,000), so part (a) stays in
+     * the thousands to keep the run short. The 10^5 to 10^6 vertices of part
+     * (b) would need 40 GB to 4 TB for the matrix.
      */
     private static final int[] PART_A_VERTEX_COUNTS = {
         500, 1_000, 2_000, 3_000, 4_000, 5_000, 6_000, 7_000, 8_000
@@ -66,7 +80,12 @@ public class ExperimentRunner {
         0.001, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 1.0
     };
 
-    /** Part (c) runs every implementation on every graph of this grid. */
+    /**
+     * Part (c) runs every implementation on every graph of this grid, with
+     * random and worst-case weights only. The weightings are listed by name
+     * so that adding one does not change part (c).
+     */
+    private static final Weights[] PART_C_WEIGHTS = {Weights.RANDOM, Weights.WORST_CASE};
     private static final int[] PART_C_VERTEX_COUNTS = {1_000, 2_000, 4_000, 8_000};
     private static final double[] PART_C_DENSITIES = {
         0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.35, 0.5,
@@ -77,8 +96,13 @@ public class ExperimentRunner {
     private ExperimentRunner() {
     }
 
-    /** The two weightings of the same random edges; see {@link GraphGenerator}. */
+    /**
+     * The three weightings of the same random edges; see {@link GraphGenerator}.
+     * Uniform weights give the fewest decrease-keys (best case), random
+     * weights the average case, and worst-case weights one per forward edge.
+     */
     private enum Weights {
+        UNIFORM("uniform"),
         RANDOM("random"),
         WORST_CASE("worst_case");
 
@@ -89,9 +113,11 @@ public class ExperimentRunner {
         }
 
         private AdjacencyListGraph build(int v, long e, long seed) {
-            return this == RANDOM
-                    ? GraphGenerator.randomGraph(v, e, MAXIMUM_WEIGHT, seed)
-                    : GraphGenerator.worstCaseGraph(v, e, seed);
+            return switch (this) {
+                case UNIFORM -> GraphGenerator.uniformGraph(v, e, seed);
+                case RANDOM -> GraphGenerator.randomGraph(v, e, MAXIMUM_WEIGHT, seed);
+                case WORST_CASE -> GraphGenerator.worstCaseGraph(v, e, seed);
+            };
         }
     }
 
@@ -183,24 +209,25 @@ public class ExperimentRunner {
     }
 
     /**
-     * Part (a): adjacency matrix and array priority queue. |V| is varied on a
-     * sparse and on a complete family, then |E| is varied at a fixed |V| with
-     * both weightings, then the branch control is run.
+     * Part (a): adjacency matrix and array priority queue. (i) |V| is varied
+     * at a fixed |E| with random weights; (ii) and (iii) vary |E| at a fixed
+     * |V| with every weighting; then the branch control is run.
      */
     private static void runPartA(Path varyVFile, Path varyEFile, Path controlFile)
             throws IOException {
         System.out.println("Running Part (a): adjacency matrix + array queue...");
+        long e = PART_A_FIXED_EDGE_COUNT;
+        for (int v : PART_A_VERTEX_COUNTS) {
+            if (e < v || e > GraphGenerator.maxEdges(v)) {
+                throw new IllegalStateException(
+                        "Part (a) needs V <= E <= V(V-1), but V = " + v + " and E = " + e + ".");
+            }
+        }
 
         try (PrintWriter writer = newWriter(varyVFile)) {
             writeSweepHeader(writer);
             for (int v : PART_A_VERTEX_COUNTS) {
-                long e = (long) SPARSE_OUT_DEGREE * v;
-                writeSweepRow(writer, Weights.RANDOM, "sparse", v, e,
-                        measure(Weights.RANDOM, Variant.MATRIX_ARRAY, v, e));
-            }
-            for (int v : PART_A_VERTEX_COUNTS) {
-                long e = GraphGenerator.maxEdges(v);
-                writeSweepRow(writer, Weights.RANDOM, "complete", v, e,
+                writeSweepRow(writer, Weights.RANDOM, "fixed_e", v, e,
                         measure(Weights.RANDOM, Variant.MATRIX_ARRAY, v, e));
             }
         }
@@ -209,26 +236,29 @@ public class ExperimentRunner {
     }
 
     /**
-     * Part (b): adjacency lists and min-heap, with both weightings. The |E|
-     * sweep uses the same graphs as part (a), so the two can be read side by
-     * side.
+     * Part (b): adjacency lists and min-heap. (i) |V| is varied with E = 10V
+     * and random weights; (ii) and (iii) vary |E| at a fixed |V| with every
+     * weighting, on the same graphs as part (a), so the two can be read side
+     * by side.
      */
     private static void runPartB(Path varyVFile, Path varyEFile) throws IOException {
         System.out.println("Running Part (b): adjacency lists + min-heap...");
 
         try (PrintWriter writer = newWriter(varyVFile)) {
             writeSweepHeader(writer);
-            for (Weights weights : Weights.values()) {
-                for (int v : PART_B_VERTEX_COUNTS) {
-                    long e = (long) SPARSE_OUT_DEGREE * v;
-                    writeSweepRow(writer, weights, "sparse", v, e,
-                            measure(weights, Variant.LIST_HEAP, v, e));
-                }
+            for (int v : PART_B_VERTEX_COUNTS) {
+                long e = (long) SPARSE_OUT_DEGREE * v;
+                writeSweepRow(writer, Weights.RANDOM, "sparse", v, e,
+                        measure(Weights.RANDOM, Variant.LIST_HEAP, v, e));
             }
         }
         writeFixedVSweep(varyEFile, Variant.LIST_HEAP);
     }
 
+    /**
+     * Varies |E| at FIXED_VERTEX_COUNT with every weighting. The random rows
+     * are sub-experiment (ii); all three weightings together are (iii).
+     */
     private static void writeFixedVSweep(Path outputFile, Variant variant) throws IOException {
         try (PrintWriter writer = newWriter(outputFile)) {
             writeSweepHeader(writer);
@@ -350,7 +380,7 @@ public class ExperimentRunner {
                     "weights,v,crossings,density_below,b_over_a_below,"
                             + "density_above,b_over_a_above,crossover_density");
 
-            for (Weights weights : Weights.values()) {
+            for (Weights weights : PART_C_WEIGHTS) {
                 for (int v : PART_C_VERTEX_COUNTS) {
                     double[] densities = new double[PART_C_DENSITIES.length];
                     double[] heapRatios = new double[PART_C_DENSITIES.length];
@@ -546,7 +576,7 @@ public class ExperimentRunner {
         }
     }
 
-    /** Compiles every implementation on sparse and dense graphs of both weightings before timing. */
+    /** Compiles every implementation on sparse and dense graphs of every weighting before timing. */
     private static void warmUpJvm() {
         final int warmUpRuns = 5;
         final int warmUpSize = 2_000;

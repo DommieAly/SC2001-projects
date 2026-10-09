@@ -15,6 +15,8 @@ import java.util.SplittableRandom;
  *       compared against Bellman-Ford, which shares no code with Dijkstra.</li>
  *   <li>Graphs from {@link GraphGenerator} at the smallest and largest edge
  *       counts it allows, checked with {@link ShortestPathVerifier}.</li>
+ *   <li>The uniform weights: same edges as the random weights, every weight
+ *       1, and exactly V - 1 relaxations lower a key.</li>
  *   <li>The worst-case weights: same edges as the random weights, and every
  *       relaxation of an edge to a later vertex lowers a key.</li>
  * </ol>
@@ -27,6 +29,7 @@ public final class CorrectnessCheck {
         checkTextbookExample();
         checkAgainstBellmanFord();
         checkGeneratedGraphs();
+        checkUniformWeights();
         checkWorstCaseWeights();
         System.out.println("All correctness checks passed.");
     }
@@ -125,6 +128,54 @@ public final class CorrectnessCheck {
     }
 
     /**
+     * With every weight 1, the first relaxation that reaches a vertex sets its
+     * final distance, so every implementation must lower exactly V - 1 keys:
+     * one for each vertex other than the source.
+     */
+    private static void checkUniformWeights() {
+        int graphs = 0;
+        for (int vertexCount : new int[] {2, 3, 4, 17, 64, 300}) {
+            for (long edgeCount : edgeCountsToCheck(vertexCount)) {
+                AdjacencyListGraph uniform = GraphGenerator.uniformGraph(vertexCount, edgeCount, edgeCount);
+                AdjacencyListGraph random =
+                        GraphGenerator.randomGraph(vertexCount, edgeCount, 1_000, edgeCount);
+                for (int u = 0; u < vertexCount; u++) {
+                    if (!Arrays.equals(uniform.neighboursOf(u), random.neighboursOf(u))) {
+                        throw new IllegalStateException("Uniform weights changed the edges.");
+                    }
+                    for (int weight : uniform.weightsOf(u)) {
+                        if (weight != 1) {
+                            throw new IllegalStateException(
+                                    "Uniform weights include a weight of " + weight + ".");
+                        }
+                    }
+                }
+
+                Map<String, ShortestPaths> results = runAll(uniform, 0);
+                ShortestPaths first = results.values().iterator().next();
+                for (Map.Entry<String, ShortestPaths> result : results.entrySet()) {
+                    ShortestPathVerifier.verify(uniform, result.getValue());
+                    if (!result.getValue().sameDistances(first)) {
+                        throw new IllegalStateException(
+                                result.getKey() + " disagrees with the others at V="
+                                        + vertexCount + ", E=" + edgeCount + ", uniform weights");
+                    }
+                }
+
+                for (long count : decreaseKeyCounts(uniform)) {
+                    if (count != vertexCount - 1) {
+                        throw new IllegalStateException(
+                                "Uniform weights: " + count + " decrease-keys, expected "
+                                        + (vertexCount - 1) + " at V=" + vertexCount + ", E=" + edgeCount);
+                    }
+                }
+                graphs++;
+            }
+        }
+        System.out.println("  " + graphs + " uniform-weight graphs lower exactly V - 1 keys");
+    }
+
+    /**
      * With worst-case weights, d(x_i) = i along the cycle, so the distances are
      * exactly 0..V-1, and every edge (u, v) with d[v] &gt; d[u] must lower a key
      * in every implementation.
@@ -160,20 +211,7 @@ public final class CorrectnessCheck {
                     }
                 }
 
-                AdjacencyMatrixGraph matrix = AdjacencyMatrixGraph.from(worst);
-                DijkstraMatrixArray a = new DijkstraMatrixArray();
-                DijkstraListHeap b = new DijkstraListHeap();
-                DijkstraMatrixHeap matrixHeap = new DijkstraMatrixHeap();
-                DijkstraListArray listArray = new DijkstraListArray();
-                a.run(matrix, 0);
-                b.run(worst, 0);
-                matrixHeap.run(matrix, 0);
-                listArray.run(worst, 0);
-                long[] decreaseKeys = {
-                    a.getDecreaseKeyCount(), b.getDecreaseKeyCount(),
-                    matrixHeap.getDecreaseKeyCount(), listArray.getDecreaseKeyCount(),
-                };
-                for (long count : decreaseKeys) {
+                for (long count : decreaseKeyCounts(worst)) {
                     if (count != forwardEdges) {
                         throw new IllegalStateException(
                                 "Worst-case weights: " + count + " decrease-keys, expected "
@@ -184,6 +222,23 @@ public final class CorrectnessCheck {
             }
         }
         System.out.println("  " + graphs + " worst-case graphs lower a key on every forward edge");
+    }
+
+    /** The decrease-key count of each of the four implementations, run from vertex 0. */
+    private static long[] decreaseKeyCounts(AdjacencyListGraph graph) {
+        AdjacencyMatrixGraph matrix = AdjacencyMatrixGraph.from(graph);
+        DijkstraMatrixArray a = new DijkstraMatrixArray();
+        DijkstraListHeap b = new DijkstraListHeap();
+        DijkstraMatrixHeap matrixHeap = new DijkstraMatrixHeap();
+        DijkstraListArray listArray = new DijkstraListArray();
+        a.run(matrix, 0);
+        b.run(graph, 0);
+        matrixHeap.run(matrix, 0);
+        listArray.run(graph, 0);
+        return new long[] {
+            a.getDecreaseKeyCount(), b.getDecreaseKeyCount(),
+            matrixHeap.getDecreaseKeyCount(), listArray.getDecreaseKeyCount(),
+        };
     }
 
     private static long[] edgeCountsToCheck(int vertexCount) {

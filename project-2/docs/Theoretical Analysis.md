@@ -44,6 +44,68 @@ graphs every vertex is reachable, so `R = V`.
 - A relaxation calls `Decrease-Key` only when it finds a shorter path, so
   there are at most `E` calls.
 
+## Best, average and worst case
+
+The numbers of extractions, edge scans and relaxations above do not depend
+on the weights. Only the number of `Decrease-Key` calls does, and it lies
+between `R − 1` and `E`. The experiments use three weightings of the same
+edges, one for each case.
+
+### Best case: uniform weights, exactly `V − 1` calls
+
+Every reachable vertex other than `s` starts with `d = ∞` and ends with a
+finite distance, and the first relaxation that reaches it lowers its key
+from `∞`. So any weighting makes at least `R − 1` `Decrease-Key` calls.
+
+Uniform weights (every weight 1, `GraphGenerator.uniformGraph`) make
+exactly that many. With equal weights, `d(v) = d(u) + 1` for an
+in-neighbour `u` of `v` with the smallest distance. Vertices are extracted in
+non-decreasing order of distance, so the first in-neighbour of `v` to be
+extracted is such a `u`, and its relaxation already sets `d[v]` to its final
+value. Every later relaxation into `v` comes from an in-neighbour `u'` with
+`d(u') ≥ d(u)` and offers `d(u') + 1 ≥ d[v]`, so it fails. Each vertex other
+than `s` therefore has its key lowered exactly once: `R − 1` calls, which is
+`V − 1` when every vertex is reachable. `CorrectnessCheck` confirms the count
+for all four implementations.
+
+### Average case: random weights, at most about `V · H(E/V)` calls
+
+`d[v]` is lowered only when a newly examined in-edge of `v` gives a shorter
+path than every in-edge examined before it. The in-neighbours of `v` are
+extracted in order of distance, so a later in-neighbour `u` can only win if
+its edge weight `w(u, v)` is smaller than all earlier ones. This order does
+not depend on the weights of `v`'s own in-edges: an in-neighbour `u`
+extracted before `v` has `d[u] ≤ d[v]`, so its shortest path does not pass
+through `v`, and an in-neighbour extracted after `v` cannot lower `d[v]` at
+all. So the `j`-th in-edge weight in this order is smaller than all earlier
+ones with probability at most `1/j`. Among `k` in-edges, the expected number
+of "new smallest so far" events is therefore at most the harmonic number
+
+```text
+H(k) = 1 + 1/2 + 1/3 + ... + 1/k ≈ ln k + 0.58.
+```
+
+Each vertex `v` contributes at most `H(in-degree of v)`. The average
+in-degree is `E/V`, and `H` grows more slowly as its argument grows, so the
+expected number of `Decrease-Key` calls is at most
+`V · H(E/V) ≈ V(ln(E/V) + 0.58)`, far below `E` when `E/V` is large (Noshita,
+1985, proves an `O(V(1 + log(E/V)))` bound for random weights).
+
+### Worst case: worst-case weights, about `E/2` calls
+
+`GraphGenerator.worstCaseGraph` keeps the same edges and picks weights that
+make as many relaxations as possible lower a key. Every generated graph
+contains a cycle through all vertices (a Hamiltonian cycle). Number the
+vertices `x₀ = s, x₁, x₂, ...` along it and give each cycle edge weight 1, so
+`d(xᵢ) = i` and the vertices are extracted in exactly this order. Every other
+edge from `xᵢ` to a later vertex (a *forward edge*) gets a weight chosen so
+that its new key `d(xᵢ) + w` is smaller than every key set earlier, and these
+keys fall along `xᵢ`'s adjacency list. So every relaxation of a forward edge
+lowers a key below every other key in the queue, except `xᵢ₊₁`'s key `i + 1`
+once the cycle edge to `xᵢ₊₁` has been relaxed. Edges back to earlier
+vertices never lower a key, because their target is already finished. With
+about half the edges pointing forward, `Decrease-Key` runs about `E/2` times.
+
 ## Part (a): adjacency matrix + array priority queue
 
 The queue is an unsorted array of `(vertex, key)` entries, plus an index from
@@ -79,8 +141,14 @@ T_a(V, E) = Θ(V) + Θ(V²) + Θ(V²) + Θ(E) + O(E) = Θ(V² + E) = Θ(V²),   
 - **With respect to `V`:** quadratic.
 - **With respect to `E`:** `E` only enters through the relaxations and
   `Decrease-Key` calls, at `O(1)` each. That work is never larger than the
-  `V²` cells already read, so best, average and worst case are all `Θ(V²)`
-  on graphs where every vertex is reachable.
+  `V²` cells already read.
+- **Best, average and worst case:** `V − 1`, at most about `V · H(E/V)`, and
+  about `E/2` `Decrease-Key` calls, each `O(1)`. All three cases are
+  therefore `Θ(V²)` on graphs where every vertex is reachable. On real
+  hardware the worst case still costs more per cell at middle densities,
+  because the CPU often guesses the outcome of the relaxation test wrongly
+  (README, part (a)(iii)). That changes the constant, not the `Θ(V²)`
+  growth: each cell adds at most one wrong guess.
 - **Reachability:** if only `R < V` vertices are reachable, the loop stops
   after `R + 1` extractions and `R` row scans, so the cost is `Θ(R · V)`.
   Each of those `R` row scans still reads all `V` cells, unreachable columns
@@ -122,60 +190,40 @@ familiar `O(E log V)`.
   vertices and their edges are touched.
 - **Memory:** `Θ(V + E)`: the lists store each edge once, as a target and a weight.
 
-### How many `Decrease-Key` calls happen
+### Running time in each case
 
 The `E log V` term is reached only if most relaxations lower a key and each
 lowered key climbs most of the heap. Whether that happens depends on the
-weights.
+weights (see [Best, average and worst case](#best-average-and-worst-case)
+for the number of calls).
 
-**Random weights.** `d[v]` is lowered only when a newly examined in-edge of
-`v` gives a shorter path than every in-edge examined before it. The
-in-neighbours of `v` are extracted in order of distance, so a later
-in-neighbour `u` can only win if its edge weight `w(u, v)` is smaller than all
-earlier ones. This order does not depend on the weights of `v`'s own
-in-edges: an in-neighbour `u` extracted before `v` has `d[u] ≤ d[v]`, so its
-shortest path does not pass through `v`, and an in-neighbour extracted after
-`v` cannot lower `d[v]` at all. So the `j`-th in-edge weight in this order is
-smaller than all earlier ones with probability at most `1/j`. Among `k`
-in-edges, the expected number of "new smallest so far" events is therefore at
-most the harmonic number
+- **Best case, uniform weights.** `V − 1` `Decrease-Key` calls at
+  `O(log V)` each, the same order as the extractions, so
 
-```text
-H(k) = 1 + 1/2 + 1/3 + ... + 1/k ≈ ln k + 0.58.
-```
+  ```text
+  T_b = Θ(V + E) + O(V log V).
+  ```
 
-Each vertex `v` contributes at most `H(in-degree of v)`. The average
-in-degree is `E/V`, and `H` grows more slowly as its argument grows, so the
-expected number of `Decrease-Key` calls is at most
-`V · H(E/V) ≈ V(ln(E/V) + 0.58)`, far below `E` when `E/V` is large (Noshita,
-1985, proves an `O(V(1 + log(E/V)))` bound for random weights). The heap work
-is then `O(V log V)` for the extractions plus `O(V log V · (1 + log(E/V)))`
-for the `Decrease-Key` calls, so on random inputs the expected running time is
+- **Average case, random weights.** At most about `V · H(E/V)` calls on
+  average. The heap work is then `O(V log V)` for the extractions plus
+  `O(V log V · (1 + log(E/V)))` for the `Decrease-Key` calls, so the expected
+  running time is
 
-```text
-T_b = Θ(E) + O(V log V · (1 + log(E/V))),
-```
+  ```text
+  T_b = Θ(E) + O(V log V · (1 + log(E/V))),
+  ```
 
-which, for a fixed `V`, grows linearly in `E`.
+  which, for a fixed `V`, grows linearly in `E`.
 
-**Worst-case weights.** `GraphGenerator.worstCaseGraph` keeps the same edges
-and picks weights that force the bound. Every generated graph contains a cycle
-through all vertices (a Hamiltonian cycle). Number the vertices
-`x₀ = s, x₁, x₂, ...` along it and give each cycle edge weight 1, so
-`d(xᵢ) = i` and the vertices are extracted in exactly this order. Every other
-edge from `xᵢ` to a later vertex (a *forward edge*) gets a weight chosen so
-that its new key `d(xᵢ) + w` is smaller than every key set earlier, and these
-keys fall along `xᵢ`'s adjacency list. So every relaxation of a forward edge
-lowers a key below every other key in the queue, except `xᵢ₊₁`'s key `i + 1`
-once the cycle edge to `xᵢ₊₁` has been relaxed. In the heap the vertex
-therefore climbs to the root, or to a child of the root when `xᵢ₊₁` holds the
-root. Edges back to earlier vertices never lower a key.
-
-With about half the edges pointing forward, `Decrease-Key` runs about `E/2`
-times. Each call climbs from the vertex's current node to the root or to a
-child of the root, at most `⌊log V⌋` levels. On the complete graph with
-`V = 5,000` the measured average is 10.1 levels, out of at most 12, so this
-input reaches the bound: `Θ(E log V)`.
+- **Worst case, worst-case weights.** About `E/2` calls. Each new key is
+  smaller than every other key in the heap except possibly `xᵢ₊₁`'s, so the
+  vertex climbs from its current node to the root, or to a child of the root
+  when `xᵢ₊₁` holds the root: at most `⌊log V⌋` levels. On the complete graph
+  with `V = 5,000` each call makes 10.6 heap comparisons on average (README,
+  part (b)(iii)). A climb of `L` levels makes `L` comparisons if it reaches
+  the root and `L + 1` if it stops below it, which happens for about half of
+  the calls, so the average climb is about 10.1 levels, out of at most 12.
+  This input therefore reaches the bound: `Θ(E log V)`.
 
 ## Part (c): which is better, and when
 
@@ -202,7 +250,7 @@ per heap operation.
   costs are roughly proportional to the number of matrix cells or list
   entries read: `c_a·V²` against `c_b·E`. The break-even density is then a
   ratio of constants, `c_a / c_b`, and no longer shrinks as `V` grows. In
-  the experiments (b) is faster at every density up to 0.95 for every `V`,
+  the experiments (b) is faster at every density below 1 for every `V`,
   and the two meet only on the complete graph. So on the test machine
   `c_a / c_b` is about 1 or larger: with random weights, (a) is never clearly
   faster.

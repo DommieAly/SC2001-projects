@@ -2,7 +2,7 @@ import java.util.Arrays;
 import java.util.SplittableRandom;
 
 /**
- * Random directed graphs with an exact number of vertices and edges, in two
+ * Random directed graphs with an exact number of vertices and edges, in three
  * weightings that share the same edges.
  *
  * <p>Every graph contains a random Hamiltonian cycle, so every vertex can reach
@@ -17,6 +17,8 @@ import java.util.SplittableRandom;
  * order as a scan of the matrix row.
  *
  * <ul>
+ *   <li>{@link #uniformGraph} gives every edge weight 1. Exactly V - 1
+ *       relaxations then lower a key, the fewest possible: the best case.</li>
  *   <li>{@link #randomGraph} draws every weight uniformly from [1, maxWeight].
  *       Few relaxations then lower a key: at least V - 1, and on average at
  *       most about V * H(E/V), where H(k) = 1 + 1/2 + ... + 1/k.</li>
@@ -29,7 +31,7 @@ import java.util.SplittableRandom;
  * </ul>
  */
 public final class GraphGenerator {
-    /** Separates the weight stream from the edge stream, so both weightings get identical edges. */
+    /** Separates the weight stream from the edge stream, so every weighting gets identical edges. */
     private static final long WEIGHT_STREAM = 0x5DEECE66DL;
 
     /**
@@ -62,6 +64,25 @@ public final class GraphGenerator {
             }
         }
         return new AdjacencyListGraph(structure.neighbours(), weights);
+    }
+
+    /**
+     * The edges of {@code randomGraph(vertexCount, edgeCount, *, seed)} with
+     * every weight 1, which makes vertex 0 a best-case source: exactly V - 1
+     * relaxations lower a key.
+     *
+     * <p>Every vertex other than the source is reachable and starts with key
+     * infinity, so its key is lowered at least once: no weighting of these
+     * edges can do with fewer. With equal
+     * weights the first relaxation that reaches a vertex v already sets its
+     * final distance. Vertices are extracted in non-decreasing order of
+     * distance, so the first in-neighbour u of v to be extracted has the
+     * smallest distance of all v's in-neighbours, and d(v) = d(u) + 1. No
+     * later relaxation of an edge into v can be shorter, so v gets exactly
+     * one decreaseKey.
+     */
+    public static AdjacencyListGraph uniformGraph(int vertexCount, long edgeCount, long seed) {
+        return randomGraph(vertexCount, edgeCount, 1, seed);
     }
 
     /**
