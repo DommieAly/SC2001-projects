@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
 """Draw the subproblem graph of part (2) from the CSV results.
 
-Vertices sit on a line, largest capacity first, as in the lecture's graph of
-fib(6), and the distance between two vertices is the difference of their
-capacities, so all edges of one object type have the same span. The script
-needs only the standard library: it writes SVG, and on macOS `sips` converts
-that to PNG.
+Each vertex P(15 - 4a - 5b) goes in column a and row b. A type-0 edge is then
+one step right, a type-1 edge one step down, and a type-2 edge two steps right,
+because w2 = 2 * w0. The script needs only the standard library: it writes SVG,
+and on macOS `sips` converts that to PNG.
 """
 
 import argparse
@@ -17,35 +16,49 @@ from pathlib import Path
 
 # The same categorical order as the figures of the other projects.
 TYPE_COLOURS = ["#2a78d6", "#eb6834", "#1baf7a"]
-# For each object type, which side of the line its edges take (1 is above) and
-# the angle on the vertex circle where they leave. Types 0 and 2 share a side
-# because that placement gives the fewest edge crossings.
-TYPE_SIDE = [1, -1, 1]
-TYPE_ANGLE = [math.radians(48), math.radians(55), math.radians(76)]
+# Columns and rows moved by an edge of each object type.
+TYPE_STEPS = [(1, 0), (0, 1), (2, 0)]
 
 TEXT = "#1a1a1a"
 MUTED = "#5c5c5c"
 BASE_CASE_FILL = "#e6e6e6"
 FONT = "Helvetica, Arial, sans-serif"
+BOLD_FONT = "Helvetica-Bold, Helvetica, Arial, sans-serif"
 
-UNIT = 72
-RADIUS = 27
-MARGIN = 60
-LINE_Y = 332
-LEGEND_Y = 524
-HEIGHT = 552
-ARC_HEIGHT = 0.55
-ARC_INSET = 0.12
-ARROW_LENGTH = 12
-ARROW_HALF_WIDTH = 5.5
-EDGE_WIDTH = 1.6
-OPTIMAL_EDGE_WIDTH = 3.6
-PNG_SCALE = 2
+WIDTH = 780
+HEIGHT = 600
+LEFT = 60
+TOP = 90
+CELL_WIDTH = 220
+CELL_HEIGHT = 150
+RADIUS = 34
+ARC_ANGLE = math.radians(58)
+ARC_CONTROL_HEIGHT = 78
+ARC_INSET = 0.2
+ARROW_LENGTH = 13
+ARROW_HALF_WIDTH = 6
+EDGE_WIDTH = 2
+OPTIMAL_EDGE_WIDTH = 4.5
+LEGEND_X = 440
+PNG_SCALE = 3
 
 
 def read_rows(path):
     with path.open(newline="", encoding="utf-8") as file:
         return [{key: int(value) for key, value in row.items()} for row in csv.DictReader(file)]
+
+
+def grid_points(root, edges):
+    """The drawing position of every vertex. Edges are listed largest capacity first."""
+    cells = {root: (0, 0)}
+    for edge in edges:
+        column, row = cells[edge["capacity"]]
+        step_column, step_row = TYPE_STEPS[edge["object_type"]]
+        cells[edge["subproblem"]] = (column + step_column, row + step_row)
+    return {
+        capacity: (LEFT + column * CELL_WIDTH, TOP + row * CELL_HEIGHT)
+        for capacity, (column, row) in cells.items()
+    }
 
 
 def optimal_edges(root, profits, edges):
@@ -65,43 +78,86 @@ def optimal_edges(root, profits, edges):
         current = winner["subproblem"]
 
 
-def text(x, y, content, size, fill=TEXT, anchor="middle", weight="normal"):
+def text(x, y, content, size, fill=TEXT, anchor="start", font=FONT, weight="normal"):
     return (
-        f'<text x="{x:.1f}" y="{y:.1f}" font-family="{FONT}" font-size="{size}" '
+        f'<text x="{x:.1f}" y="{y:.1f}" font-family="{font}" font-size="{size}" '
         f'font-weight="{weight}" fill="{fill}" text-anchor="{anchor}">{content}</text>'
     )
 
 
-def arc(x_from, x_to, object_type, width):
-    """A curved edge from x_from to x_to, with its arrowhead drawn as a polygon."""
-    colour = TYPE_COLOURS[object_type]
-    side = TYPE_SIDE[object_type]
-    angle = TYPE_ANGLE[object_type]
-    span = x_to - x_from
-    offset_x = RADIUS * math.cos(angle)
-    offset_y = side * RADIUS * math.sin(angle)
-    start = (x_from + offset_x, LINE_Y - offset_y)
-    tip = (x_to - offset_x, LINE_Y - offset_y)
-    control_y = LINE_Y - side * ARC_HEIGHT * span
-    control_a = (x_from + ARC_INSET * span, control_y)
-    control_b = (x_to - ARC_INSET * span, control_y)
-
-    length = math.hypot(tip[0] - control_b[0], tip[1] - control_b[1])
-    unit_x = (tip[0] - control_b[0]) / length
-    unit_y = (tip[1] - control_b[1]) / length
+def arrowhead(tip, previous, colour, width):
+    """The polygon of an arrowhead at tip, and the point where its line should end."""
+    length = math.hypot(tip[0] - previous[0], tip[1] - previous[1])
+    unit_x = (tip[0] - previous[0]) / length
+    unit_y = (tip[1] - previous[1]) / length
     head_length = ARROW_LENGTH + (width - EDGE_WIDTH)
     head_width = ARROW_HALF_WIDTH + (width - EDGE_WIDTH)
     base = (tip[0] - head_length * unit_x, tip[1] - head_length * unit_y)
     corner_a = (base[0] - head_width * unit_y, base[1] + head_width * unit_x)
     corner_b = (base[0] + head_width * unit_y, base[1] - head_width * unit_x)
-
     points = " ".join(f"{x:.1f},{y:.1f}" for x, y in (tip, corner_a, corner_b))
+    return base, f'<polygon points="{points}" fill="{colour}"/>'
+
+
+def line_with_arrow(start, tip, colour, width):
+    base, head = arrowhead(tip, start, colour, width)
+    return (
+        f'<line x1="{start[0]:.1f}" y1="{start[1]:.1f}" x2="{base[0]:.1f}" y2="{base[1]:.1f}" '
+        f'stroke="{colour}" stroke-width="{width}"/>{head}'
+    )
+
+
+def straight_edge(point_from, point_to, colour, width):
+    length = math.hypot(point_to[0] - point_from[0], point_to[1] - point_from[1])
+    unit_x = (point_to[0] - point_from[0]) / length
+    unit_y = (point_to[1] - point_from[1]) / length
+    start = (point_from[0] + RADIUS * unit_x, point_from[1] + RADIUS * unit_y)
+    tip = (point_to[0] - RADIUS * unit_x, point_to[1] - RADIUS * unit_y)
+    return line_with_arrow(start, tip, colour, width)
+
+
+def arc_edge(point_from, point_to, colour, width):
+    """An edge that curves over the vertex between its two ends."""
+    span = point_to[0] - point_from[0]
+    offset_x = RADIUS * math.cos(ARC_ANGLE)
+    offset_y = RADIUS * math.sin(ARC_ANGLE)
+    start = (point_from[0] + offset_x, point_from[1] - offset_y)
+    tip = (point_to[0] - offset_x, point_to[1] - offset_y)
+    control_y = point_from[1] - ARC_CONTROL_HEIGHT
+    control_a = (point_from[0] + ARC_INSET * span, control_y)
+    control_b = (point_to[0] - ARC_INSET * span, control_y)
+    base, head = arrowhead(tip, control_b, colour, width)
     curve = " ".join(f"{x:.1f} {y:.1f}" for x, y in (control_a, control_b, base))
     return (
         f'<path d="M {start[0]:.1f} {start[1]:.1f} C {curve}" fill="none" '
-        f'stroke="{colour}" stroke-width="{width}"/>'
-        f'<polygon points="{points}" fill="{colour}"/>'
+        f'stroke="{colour}" stroke-width="{width}"/>{head}'
     )
+
+
+def legend(root, types):
+    parts = [text(LEGEND_X, 326, f"Subproblem graph of P({root})", 21, font=BOLD_FONT, weight="bold")]
+    y = 362
+    for object_type in sorted(types):
+        weight, profit = types[object_type]
+        parts.append(line_with_arrow(
+            (LEGEND_X, y - 6), (LEGEND_X + 32, y - 6), TYPE_COLOURS[object_type], EDGE_WIDTH + 1,
+        ))
+        parts.append(text(LEGEND_X + 44, y, f"type {object_type}: w = {weight}, p = {profit}", 18))
+        y += 31
+    parts.append(line_with_arrow(
+        (LEGEND_X, y - 6), (LEGEND_X + 32, y - 6), MUTED, OPTIMAL_EDGE_WIDTH,
+    ))
+    parts.append(text(LEGEND_X + 44, y, f"optimal choices for P({root})", 18))
+    y += 31
+    parts.append(
+        f'<circle cx="{LEGEND_X + 13}" cy="{y - 6}" r="10" fill="{BASE_CASE_FILL}" '
+        f'stroke="{TEXT}" stroke-width="1.2"/>'
+    )
+    parts.append(text(LEGEND_X + 44, y, "no object fits", 18))
+    y += 38
+    parts.append(text(LEGEND_X, y, "Each vertex shows P(C) and its value.", 15, MUTED))
+    parts.append(text(LEGEND_X, y + 21, "I → J means computing I directly calls J.", 15, MUTED))
+    return parts
 
 
 def build_svg(vertices, edges):
@@ -110,68 +166,33 @@ def build_svg(vertices, edges):
     has_edge = {edge["capacity"] for edge in edges}
     chosen = optimal_edges(root, profits, edges)
     types = {edge["object_type"]: (edge["weight"], edge["profit"]) for edge in edges}
-    weights = ", ".join(str(types[i][0]) for i in sorted(types))
-    item_profits = ", ".join(str(types[i][1]) for i in sorted(types))
-    width = 2 * MARGIN + root * UNIT
-
-    def position(capacity):
-        return MARGIN + (root - capacity) * UNIT
+    points = grid_points(root, edges)
 
     parts = [
-        f'<svg xmlns="http://www.w3.org/2000/svg" width="{width * PNG_SCALE}" '
-        f'height="{HEIGHT * PNG_SCALE}" viewBox="0 0 {width} {HEIGHT}">',
-        f'<rect width="{width}" height="{HEIGHT}" fill="white"/>',
-        text(width / 2, 34, f"Subproblem graph of P({root})", 22, weight="bold"),
-        text(
-            width / 2, 60,
-            f"w = ({weights}), p = ({item_profits}). "
-            "An edge I → J means that computing I directly calls J. "
-            "Each vertex shows its capacity and its value.",
-            14, MUTED,
-        ),
+        f'<svg xmlns="http://www.w3.org/2000/svg" width="{WIDTH * PNG_SCALE}" '
+        f'height="{HEIGHT * PNG_SCALE}" viewBox="0 0 {WIDTH} {HEIGHT}">',
+        f'<rect width="{WIDTH}" height="{HEIGHT}" fill="white"/>',
     ]
-
     # Thin edges first, so the optimal choices and the vertices stay on top.
     for edge in sorted(edges, key=lambda e: (e["capacity"], e["subproblem"]) in chosen):
-        is_chosen = (edge["capacity"], edge["subproblem"]) in chosen
-        parts.append(arc(
-            position(edge["capacity"]), position(edge["subproblem"]), edge["object_type"],
-            OPTIMAL_EDGE_WIDTH if is_chosen else EDGE_WIDTH,
+        width = OPTIMAL_EDGE_WIDTH if (edge["capacity"], edge["subproblem"]) in chosen else EDGE_WIDTH
+        draw = arc_edge if TYPE_STEPS[edge["object_type"]][0] == 2 else straight_edge
+        parts.append(draw(
+            points[edge["capacity"]], points[edge["subproblem"]],
+            TYPE_COLOURS[edge["object_type"]], width,
         ))
 
     for capacity, profit in profits.items():
-        x = position(capacity)
+        x, y = points[capacity]
         fill = "white" if capacity in has_edge else BASE_CASE_FILL
         parts.append(
-            f'<circle cx="{x}" cy="{LINE_Y}" r="{RADIUS}" fill="{fill}" '
-            f'stroke="{TEXT}" stroke-width="1.5"/>'
+            f'<circle cx="{x}" cy="{y}" r="{RADIUS}" fill="{fill}" '
+            f'stroke="{TEXT}" stroke-width="1.6"/>'
         )
-        parts.append(text(x, LINE_Y - 3, f"P({capacity})", 13, weight="bold"))
-        parts.append(text(x, LINE_Y + 14, str(profit), 13))
+        parts.append(text(x, y - 2, f"P({capacity})", 18, anchor="middle", font=BOLD_FONT, weight="bold"))
+        parts.append(text(x, y + 19, str(profit), 18, MUTED, anchor="middle"))
 
-    # Legend: one row below the graph.
-    x = MARGIN
-    for object_type in sorted(types):
-        weight, profit = types[object_type]
-        parts.append(
-            f'<line x1="{x}" y1="{LEGEND_Y - 5}" x2="{x + 30}" y2="{LEGEND_Y - 5}" '
-            f'stroke="{TYPE_COLOURS[object_type]}" stroke-width="3"/>'
-        )
-        parts.append(text(
-            x + 38, LEGEND_Y, f"type {object_type}: w = {weight}, p = {profit}", 14, anchor="start",
-        ))
-        x += 196
-    parts.append(
-        f'<line x1="{x}" y1="{LEGEND_Y - 5}" x2="{x + 30}" y2="{LEGEND_Y - 5}" '
-        f'stroke="{MUTED}" stroke-width="{OPTIMAL_EDGE_WIDTH}"/>'
-    )
-    parts.append(text(x + 38, LEGEND_Y, f"optimal choices for P({root})", 14, anchor="start"))
-    x += 244
-    parts.append(
-        f'<circle cx="{x + 10}" cy="{LEGEND_Y - 5}" r="9" fill="{BASE_CASE_FILL}" '
-        f'stroke="{TEXT}" stroke-width="1.2"/>'
-    )
-    parts.append(text(x + 28, LEGEND_Y, "no object fits", 14, anchor="start"))
+    parts.extend(legend(root, types))
     parts.append("</svg>")
     return "\n".join(parts) + "\n"
 

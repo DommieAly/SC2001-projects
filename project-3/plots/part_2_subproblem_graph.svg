@@ -1,60 +1,61 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="2400" height="1104" viewBox="0 0 1200 552">
-<rect width="1200" height="552" fill="white"/>
-<text x="600.0" y="34.0" font-family="Helvetica, Arial, sans-serif" font-size="22" font-weight="bold" fill="#1a1a1a" text-anchor="middle">Subproblem graph of P(15)</text>
-<text x="600.0" y="60.0" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="normal" fill="#5c5c5c" text-anchor="middle">w = (4, 5, 8), p = (7, 6, 9). An edge I → J means that computing I directly calls J. Each vertex shows its capacity and its value.</text>
-<path d="M 75.5 354.1 C 103.2 530.0 376.8 530.0 402.6 366.0" fill="none" stroke="#eb6834" stroke-width="1.6"/><polygon points="404.5,354.1 408.1,366.8 397.2,365.1" fill="#eb6834"/>
-<path d="M 66.5 305.8 C 129.1 15.2 566.9 15.2 626.9 294.1" fill="none" stroke="#1baf7a" stroke-width="1.6"/><polygon points="629.5,305.8 621.6,295.2 632.3,292.9" fill="#1baf7a"/>
-<path d="M 363.5 354.1 C 391.2 530.0 664.8 530.0 690.6 366.0" fill="none" stroke="#eb6834" stroke-width="1.6"/><polygon points="692.5,354.1 696.1,366.8 685.2,365.1" fill="#eb6834"/>
-<path d="M 354.5 305.8 C 417.1 15.2 854.9 15.2 914.9 294.1" fill="none" stroke="#1baf7a" stroke-width="1.6"/><polygon points="917.5,305.8 909.6,295.2 920.3,292.9" fill="#1baf7a"/>
-<path d="M 438.1 311.9 C 454.6 173.6 673.4 173.6 688.5 300.0" fill="none" stroke="#2a78d6" stroke-width="1.6"/><polygon points="689.9,311.9 683.1,300.7 694.0,299.4" fill="#2a78d6"/>
-<path d="M 435.5 354.1 C 463.2 530.0 736.8 530.0 762.6 366.0" fill="none" stroke="#eb6834" stroke-width="1.6"/><polygon points="764.5,354.1 768.1,366.8 757.2,365.1" fill="#eb6834"/>
-<path d="M 426.5 305.8 C 489.1 15.2 926.9 15.2 986.9 294.1" fill="none" stroke="#1baf7a" stroke-width="1.6"/><polygon points="989.5,305.8 981.6,295.2 992.3,292.9" fill="#1baf7a"/>
-<path d="M 651.5 354.1 C 679.2 530.0 952.8 530.0 978.6 366.0" fill="none" stroke="#eb6834" stroke-width="1.6"/><polygon points="980.5,354.1 984.1,366.8 973.2,365.1" fill="#eb6834"/>
-<path d="M 726.1 311.9 C 742.6 173.6 961.4 173.6 976.5 300.0" fill="none" stroke="#2a78d6" stroke-width="1.6"/><polygon points="977.9,311.9 971.1,300.7 982.0,299.4" fill="#2a78d6"/>
-<path d="M 723.5 354.1 C 751.2 530.0 1024.8 530.0 1050.6 366.0" fill="none" stroke="#eb6834" stroke-width="1.6"/><polygon points="1052.5,354.1 1056.1,366.8 1045.2,365.1" fill="#eb6834"/>
-<path d="M 798.1 311.9 C 814.6 173.6 1033.4 173.6 1048.5 300.0" fill="none" stroke="#2a78d6" stroke-width="1.6"/><polygon points="1049.9,311.9 1043.1,300.7 1054.0,299.4" fill="#2a78d6"/>
-<path d="M 795.5 354.1 C 823.2 530.0 1096.8 530.0 1122.6 366.0" fill="none" stroke="#eb6834" stroke-width="1.6"/><polygon points="1124.5,354.1 1128.1,366.8 1117.2,365.1" fill="#eb6834"/>
-<path d="M 78.1 311.9 C 94.6 173.6 313.4 173.6 328.3 298.0" fill="none" stroke="#2a78d6" stroke-width="3.6"/><polygon points="329.9,311.9 320.8,298.9 335.7,297.1" fill="#2a78d6"/>
-<path d="M 366.1 311.9 C 382.6 173.6 601.4 173.6 616.3 298.0" fill="none" stroke="#2a78d6" stroke-width="3.6"/><polygon points="617.9,311.9 608.8,298.9 623.7,297.1" fill="#2a78d6"/>
-<path d="M 654.1 311.9 C 670.6 173.6 889.4 173.6 904.3 298.0" fill="none" stroke="#2a78d6" stroke-width="3.6"/><polygon points="905.9,311.9 896.8,298.9 911.7,297.1" fill="#2a78d6"/>
-<circle cx="60" cy="332" r="27" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
-<text x="60.0" y="329.0" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="bold" fill="#1a1a1a" text-anchor="middle">P(15)</text>
-<text x="60.0" y="346.0" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="normal" fill="#1a1a1a" text-anchor="middle">21</text>
-<circle cx="348" cy="332" r="27" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
-<text x="348.0" y="329.0" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="bold" fill="#1a1a1a" text-anchor="middle">P(11)</text>
-<text x="348.0" y="346.0" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="normal" fill="#1a1a1a" text-anchor="middle">14</text>
-<circle cx="420" cy="332" r="27" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
-<text x="420.0" y="329.0" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="bold" fill="#1a1a1a" text-anchor="middle">P(10)</text>
-<text x="420.0" y="346.0" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="normal" fill="#1a1a1a" text-anchor="middle">14</text>
-<circle cx="636" cy="332" r="27" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
-<text x="636.0" y="329.0" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="bold" fill="#1a1a1a" text-anchor="middle">P(7)</text>
-<text x="636.0" y="346.0" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="normal" fill="#1a1a1a" text-anchor="middle">7</text>
-<circle cx="708" cy="332" r="27" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
-<text x="708.0" y="329.0" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="bold" fill="#1a1a1a" text-anchor="middle">P(6)</text>
-<text x="708.0" y="346.0" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="normal" fill="#1a1a1a" text-anchor="middle">7</text>
-<circle cx="780" cy="332" r="27" fill="white" stroke="#1a1a1a" stroke-width="1.5"/>
-<text x="780.0" y="329.0" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="bold" fill="#1a1a1a" text-anchor="middle">P(5)</text>
-<text x="780.0" y="346.0" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="normal" fill="#1a1a1a" text-anchor="middle">7</text>
-<circle cx="924" cy="332" r="27" fill="#e6e6e6" stroke="#1a1a1a" stroke-width="1.5"/>
-<text x="924.0" y="329.0" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="bold" fill="#1a1a1a" text-anchor="middle">P(3)</text>
-<text x="924.0" y="346.0" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="normal" fill="#1a1a1a" text-anchor="middle">0</text>
-<circle cx="996" cy="332" r="27" fill="#e6e6e6" stroke="#1a1a1a" stroke-width="1.5"/>
-<text x="996.0" y="329.0" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="bold" fill="#1a1a1a" text-anchor="middle">P(2)</text>
-<text x="996.0" y="346.0" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="normal" fill="#1a1a1a" text-anchor="middle">0</text>
-<circle cx="1068" cy="332" r="27" fill="#e6e6e6" stroke="#1a1a1a" stroke-width="1.5"/>
-<text x="1068.0" y="329.0" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="bold" fill="#1a1a1a" text-anchor="middle">P(1)</text>
-<text x="1068.0" y="346.0" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="normal" fill="#1a1a1a" text-anchor="middle">0</text>
-<circle cx="1140" cy="332" r="27" fill="#e6e6e6" stroke="#1a1a1a" stroke-width="1.5"/>
-<text x="1140.0" y="329.0" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="bold" fill="#1a1a1a" text-anchor="middle">P(0)</text>
-<text x="1140.0" y="346.0" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="normal" fill="#1a1a1a" text-anchor="middle">0</text>
-<line x1="60" y1="519" x2="90" y2="519" stroke="#2a78d6" stroke-width="3"/>
-<text x="98.0" y="524.0" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="normal" fill="#1a1a1a" text-anchor="start">type 0: w = 4, p = 7</text>
-<line x1="256" y1="519" x2="286" y2="519" stroke="#eb6834" stroke-width="3"/>
-<text x="294.0" y="524.0" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="normal" fill="#1a1a1a" text-anchor="start">type 1: w = 5, p = 6</text>
-<line x1="452" y1="519" x2="482" y2="519" stroke="#1baf7a" stroke-width="3"/>
-<text x="490.0" y="524.0" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="normal" fill="#1a1a1a" text-anchor="start">type 2: w = 8, p = 9</text>
-<line x1="648" y1="519" x2="678" y2="519" stroke="#5c5c5c" stroke-width="3.6"/>
-<text x="686.0" y="524.0" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="normal" fill="#1a1a1a" text-anchor="start">optimal choices for P(15)</text>
-<circle cx="902" cy="519" r="9" fill="#e6e6e6" stroke="#1a1a1a" stroke-width="1.2"/>
-<text x="920.0" y="524.0" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="normal" fill="#1a1a1a" text-anchor="start">no object fits</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="2340" height="1800" viewBox="0 0 780 600">
+<rect width="780" height="600" fill="white"/>
+<line x1="60.0" y1="124.0" x2="60.0" y2="193.0" stroke="#eb6834" stroke-width="2"/><polygon points="60.0,206.0 54.0,193.0 66.0,193.0" fill="#eb6834"/>
+<path d="M 78.0 61.2 C 148.0 12.0 412.0 12.0 471.3 53.7" fill="none" stroke="#1baf7a" stroke-width="2"/><polygon points="482.0,61.2 467.9,58.6 474.8,48.8" fill="#1baf7a"/>
+<line x1="280.0" y1="124.0" x2="280.0" y2="193.0" stroke="#eb6834" stroke-width="2"/><polygon points="280.0,206.0 274.0,193.0 286.0,193.0" fill="#eb6834"/>
+<path d="M 298.0 61.2 C 368.0 12.0 632.0 12.0 691.3 53.7" fill="none" stroke="#1baf7a" stroke-width="2"/><polygon points="702.0,61.2 687.9,58.6 694.8,48.8" fill="#1baf7a"/>
+<line x1="94.0" y1="240.0" x2="233.0" y2="240.0" stroke="#2a78d6" stroke-width="2"/><polygon points="246.0,240.0 233.0,246.0 233.0,234.0" fill="#2a78d6"/>
+<line x1="60.0" y1="274.0" x2="60.0" y2="343.0" stroke="#eb6834" stroke-width="2"/><polygon points="60.0,356.0 54.0,343.0 66.0,343.0" fill="#eb6834"/>
+<path d="M 78.0 211.2 C 148.0 162.0 412.0 162.0 471.3 203.7" fill="none" stroke="#1baf7a" stroke-width="2"/><polygon points="482.0,211.2 467.9,208.6 474.8,198.8" fill="#1baf7a"/>
+<line x1="500.0" y1="124.0" x2="500.0" y2="193.0" stroke="#eb6834" stroke-width="2"/><polygon points="500.0,206.0 494.0,193.0 506.0,193.0" fill="#eb6834"/>
+<line x1="314.0" y1="240.0" x2="453.0" y2="240.0" stroke="#2a78d6" stroke-width="2"/><polygon points="466.0,240.0 453.0,246.0 453.0,234.0" fill="#2a78d6"/>
+<line x1="280.0" y1="274.0" x2="280.0" y2="343.0" stroke="#eb6834" stroke-width="2"/><polygon points="280.0,356.0 274.0,343.0 286.0,343.0" fill="#eb6834"/>
+<line x1="94.0" y1="390.0" x2="233.0" y2="390.0" stroke="#2a78d6" stroke-width="2"/><polygon points="246.0,390.0 233.0,396.0 233.0,384.0" fill="#2a78d6"/>
+<line x1="60.0" y1="424.0" x2="60.0" y2="493.0" stroke="#eb6834" stroke-width="2"/><polygon points="60.0,506.0 54.0,493.0 66.0,493.0" fill="#eb6834"/>
+<line x1="94.0" y1="90.0" x2="230.5" y2="90.0" stroke="#2a78d6" stroke-width="4.5"/><polygon points="246.0,90.0 230.5,98.5 230.5,81.5" fill="#2a78d6"/>
+<line x1="314.0" y1="90.0" x2="450.5" y2="90.0" stroke="#2a78d6" stroke-width="4.5"/><polygon points="466.0,90.0 450.5,98.5 450.5,81.5" fill="#2a78d6"/>
+<line x1="534.0" y1="90.0" x2="670.5" y2="90.0" stroke="#2a78d6" stroke-width="4.5"/><polygon points="686.0,90.0 670.5,98.5 670.5,81.5" fill="#2a78d6"/>
+<circle cx="60" cy="90" r="34" fill="white" stroke="#1a1a1a" stroke-width="1.6"/>
+<text x="60.0" y="88.0" font-family="Helvetica-Bold, Helvetica, Arial, sans-serif" font-size="18" font-weight="bold" fill="#1a1a1a" text-anchor="middle">P(15)</text>
+<text x="60.0" y="109.0" font-family="Helvetica, Arial, sans-serif" font-size="18" font-weight="normal" fill="#5c5c5c" text-anchor="middle">21</text>
+<circle cx="280" cy="90" r="34" fill="white" stroke="#1a1a1a" stroke-width="1.6"/>
+<text x="280.0" y="88.0" font-family="Helvetica-Bold, Helvetica, Arial, sans-serif" font-size="18" font-weight="bold" fill="#1a1a1a" text-anchor="middle">P(11)</text>
+<text x="280.0" y="109.0" font-family="Helvetica, Arial, sans-serif" font-size="18" font-weight="normal" fill="#5c5c5c" text-anchor="middle">14</text>
+<circle cx="60" cy="240" r="34" fill="white" stroke="#1a1a1a" stroke-width="1.6"/>
+<text x="60.0" y="238.0" font-family="Helvetica-Bold, Helvetica, Arial, sans-serif" font-size="18" font-weight="bold" fill="#1a1a1a" text-anchor="middle">P(10)</text>
+<text x="60.0" y="259.0" font-family="Helvetica, Arial, sans-serif" font-size="18" font-weight="normal" fill="#5c5c5c" text-anchor="middle">14</text>
+<circle cx="500" cy="90" r="34" fill="white" stroke="#1a1a1a" stroke-width="1.6"/>
+<text x="500.0" y="88.0" font-family="Helvetica-Bold, Helvetica, Arial, sans-serif" font-size="18" font-weight="bold" fill="#1a1a1a" text-anchor="middle">P(7)</text>
+<text x="500.0" y="109.0" font-family="Helvetica, Arial, sans-serif" font-size="18" font-weight="normal" fill="#5c5c5c" text-anchor="middle">7</text>
+<circle cx="280" cy="240" r="34" fill="white" stroke="#1a1a1a" stroke-width="1.6"/>
+<text x="280.0" y="238.0" font-family="Helvetica-Bold, Helvetica, Arial, sans-serif" font-size="18" font-weight="bold" fill="#1a1a1a" text-anchor="middle">P(6)</text>
+<text x="280.0" y="259.0" font-family="Helvetica, Arial, sans-serif" font-size="18" font-weight="normal" fill="#5c5c5c" text-anchor="middle">7</text>
+<circle cx="60" cy="390" r="34" fill="white" stroke="#1a1a1a" stroke-width="1.6"/>
+<text x="60.0" y="388.0" font-family="Helvetica-Bold, Helvetica, Arial, sans-serif" font-size="18" font-weight="bold" fill="#1a1a1a" text-anchor="middle">P(5)</text>
+<text x="60.0" y="409.0" font-family="Helvetica, Arial, sans-serif" font-size="18" font-weight="normal" fill="#5c5c5c" text-anchor="middle">7</text>
+<circle cx="720" cy="90" r="34" fill="#e6e6e6" stroke="#1a1a1a" stroke-width="1.6"/>
+<text x="720.0" y="88.0" font-family="Helvetica-Bold, Helvetica, Arial, sans-serif" font-size="18" font-weight="bold" fill="#1a1a1a" text-anchor="middle">P(3)</text>
+<text x="720.0" y="109.0" font-family="Helvetica, Arial, sans-serif" font-size="18" font-weight="normal" fill="#5c5c5c" text-anchor="middle">0</text>
+<circle cx="500" cy="240" r="34" fill="#e6e6e6" stroke="#1a1a1a" stroke-width="1.6"/>
+<text x="500.0" y="238.0" font-family="Helvetica-Bold, Helvetica, Arial, sans-serif" font-size="18" font-weight="bold" fill="#1a1a1a" text-anchor="middle">P(2)</text>
+<text x="500.0" y="259.0" font-family="Helvetica, Arial, sans-serif" font-size="18" font-weight="normal" fill="#5c5c5c" text-anchor="middle">0</text>
+<circle cx="280" cy="390" r="34" fill="#e6e6e6" stroke="#1a1a1a" stroke-width="1.6"/>
+<text x="280.0" y="388.0" font-family="Helvetica-Bold, Helvetica, Arial, sans-serif" font-size="18" font-weight="bold" fill="#1a1a1a" text-anchor="middle">P(1)</text>
+<text x="280.0" y="409.0" font-family="Helvetica, Arial, sans-serif" font-size="18" font-weight="normal" fill="#5c5c5c" text-anchor="middle">0</text>
+<circle cx="60" cy="540" r="34" fill="#e6e6e6" stroke="#1a1a1a" stroke-width="1.6"/>
+<text x="60.0" y="538.0" font-family="Helvetica-Bold, Helvetica, Arial, sans-serif" font-size="18" font-weight="bold" fill="#1a1a1a" text-anchor="middle">P(0)</text>
+<text x="60.0" y="559.0" font-family="Helvetica, Arial, sans-serif" font-size="18" font-weight="normal" fill="#5c5c5c" text-anchor="middle">0</text>
+<text x="440.0" y="326.0" font-family="Helvetica-Bold, Helvetica, Arial, sans-serif" font-size="21" font-weight="bold" fill="#1a1a1a" text-anchor="start">Subproblem graph of P(15)</text>
+<line x1="440.0" y1="356.0" x2="458.0" y2="356.0" stroke="#2a78d6" stroke-width="3"/><polygon points="472.0,356.0 458.0,363.0 458.0,349.0" fill="#2a78d6"/>
+<text x="484.0" y="362.0" font-family="Helvetica, Arial, sans-serif" font-size="18" font-weight="normal" fill="#1a1a1a" text-anchor="start">type 0: w = 4, p = 7</text>
+<line x1="440.0" y1="387.0" x2="458.0" y2="387.0" stroke="#eb6834" stroke-width="3"/><polygon points="472.0,387.0 458.0,394.0 458.0,380.0" fill="#eb6834"/>
+<text x="484.0" y="393.0" font-family="Helvetica, Arial, sans-serif" font-size="18" font-weight="normal" fill="#1a1a1a" text-anchor="start">type 1: w = 5, p = 6</text>
+<line x1="440.0" y1="418.0" x2="458.0" y2="418.0" stroke="#1baf7a" stroke-width="3"/><polygon points="472.0,418.0 458.0,425.0 458.0,411.0" fill="#1baf7a"/>
+<text x="484.0" y="424.0" font-family="Helvetica, Arial, sans-serif" font-size="18" font-weight="normal" fill="#1a1a1a" text-anchor="start">type 2: w = 8, p = 9</text>
+<line x1="440.0" y1="449.0" x2="456.5" y2="449.0" stroke="#5c5c5c" stroke-width="4.5"/><polygon points="472.0,449.0 456.5,457.5 456.5,440.5" fill="#5c5c5c"/>
+<text x="484.0" y="455.0" font-family="Helvetica, Arial, sans-serif" font-size="18" font-weight="normal" fill="#1a1a1a" text-anchor="start">optimal choices for P(15)</text>
+<circle cx="453" cy="480" r="10" fill="#e6e6e6" stroke="#1a1a1a" stroke-width="1.2"/>
+<text x="484.0" y="486.0" font-family="Helvetica, Arial, sans-serif" font-size="18" font-weight="normal" fill="#1a1a1a" text-anchor="start">no object fits</text>
+<text x="440.0" y="524.0" font-family="Helvetica, Arial, sans-serif" font-size="15" font-weight="normal" fill="#5c5c5c" text-anchor="start">Each vertex shows P(C) and its value.</text>
+<text x="440.0" y="545.0" font-family="Helvetica, Arial, sans-serif" font-size="15" font-weight="normal" fill="#5c5c5c" text-anchor="start">I → J means computing I directly calls J.</text>
 </svg>
